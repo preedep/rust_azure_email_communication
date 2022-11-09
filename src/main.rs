@@ -1,7 +1,3 @@
-
-
-extern crate serde_derive;
-
 use hmac::{Hmac, Mac};
 use httpdate::fmt_http_date;
 use log::{debug, error, info};
