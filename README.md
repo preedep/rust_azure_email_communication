@@ -1,1 +1,3 @@
-# rust_azure_email_communication
+# Azure Email Communication
+
+Prove of concept , Rust call Rest API of Azure Email Communication Service
