@@ -101,6 +101,31 @@ pub struct EmailStatus {
     status: String,
 }
 
+#[derive(Serialize, Deserialize,Debug)]
+pub struct CommunicationError {
+    #[serde(rename = "code")]
+    code: String,
+
+    #[serde(rename = "message")]
+    message: String,
+
+    #[serde(rename = "target")]
+    target: Option<String>,
+
+    #[serde(rename = "details")]
+    details: Option<Vec<Box<CommunicationError>>>,
+
+    #[serde(rename = "innererror")]
+    innererror: Option<Box<CommunicationError>>,
+}
+
+#[derive(Serialize, Deserialize,Debug)]
+pub struct CommunicationErrorResponse {
+    #[serde(rename = "error")]
+    error: CommunicationError,
+}
+
+
 #[derive(Debug)]
 pub struct EndPointParams {
     host_name: String,
@@ -166,7 +191,7 @@ async fn send_email(
     access_key: &String,
     request_id: &String,
     request_email: &SentEmail,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<String, String> {
     let url = format!(
         "https://{}/emails:send?api-version=2021-10-01-preview",
         host_name
@@ -225,15 +250,29 @@ async fn send_email(
         .headers(header)
         .json(request_email)
         .send()
-        .await?;
+        .await;
 
-    debug!("{:#?}", resp);
-    let message_header = resp.headers().get("x-ms-request-id");
-    let mut message_id = "";
-    if let Some(hv) = message_header {
-        message_id = hv.to_str().unwrap();
+    if let Ok(resp) = resp {
+        if resp.status().is_success() {
+            debug!("{:#?}", resp);
+            let message_header = resp.headers().get("x-ms-request-id");
+            let mut message_id = "";
+            if let Some(hv) = message_header {
+                message_id = hv.to_str().unwrap();
+            }
+            Ok(message_id.to_string())
+        }else{
+            let error_reponse = resp.json::<CommunicationErrorResponse>().await;
+            if let Ok(body) = error_reponse {
+                error!("{:#?}", body);
+                return Err(body.error.message);
+            }else{
+                return Err(error_reponse.err().unwrap().to_string())
+            }
+        }
+    }else{
+        return Err(resp.err().unwrap().to_string());
     }
-    Ok(message_id.to_string())
 }
 //
 //
@@ -242,7 +281,7 @@ async fn get_email_status(
     host_name: &String,
     access_key: &String,
     request_id: &String,
-) -> Result<EmailStatus, Box<dyn std::error::Error>> {
+) -> Result<EmailStatus, String> {
     let url = format!(
         "https://{}/emails/{}/status?api-version=2021-10-01-preview",
         host_name, request_id
@@ -290,28 +329,30 @@ async fn get_email_status(
     //header.insert("host", host_authority.parse().unwrap());
     header.insert("Authorization", authorization.parse().unwrap());
     debug!("{:#?}", header);
-
-    let resp = client.get(url).headers(header).send().await?;
-
-    debug!("{:#?}", resp);
-    if resp.status().is_success() {
-        return Ok(resp.json::<EmailStatus>().await.unwrap());
-    } else {
-        if let Ok(body) = resp.text().await {
-            debug!("{}", body);
+    let resp = client.get(url).headers(header).send().await;
+    if let Ok(resp) = resp {
+        debug!("{:#?}", resp);
+        if resp.status().is_success() {
+            return Ok(resp.json::<EmailStatus>().await.unwrap());
+        } else {
+            let error_reponse = resp.json::<CommunicationErrorResponse>().await;
+            if let Ok(body) = error_reponse {
+                error!("{:#?}", body);
+                return Err(body.error.message);
+            }else{
+               return Err(error_reponse.err().unwrap().to_string())
+            }
         }
+    }else{
+        return Err(resp.err().unwrap().to_string());
     }
-    Ok(EmailStatus {
-        message_id: "".to_string(),
-        status: "".to_string(),
-    })
 }
 
-fn parse_endpoint(endpoint: String) -> Result<EndPointParams, &'static str> {
+fn parse_endpoint(endpoint: String) -> Result<EndPointParams, String> {
     debug!("{}", "parse_endpoint");
     let parameters: Split<&str> = endpoint.split(";");
     if parameters.clone().count() != 2 {
-        return Err("Connection String Invalid");
+        return Err("Connection String Invalid".to_string());
     }
     let mut idx = 0_u8;
     let mut endpoint = EndPointParams {
@@ -326,7 +367,7 @@ fn parse_endpoint(endpoint: String) -> Result<EndPointParams, &'static str> {
                 //get host name
                 let endpoint_str = "endpoint=";
                 if !param.starts_with(endpoint_str) {
-                    return Err("Endpoint invalid");
+                    return Err("Endpoint invalid".to_string());
                 }
                 let host = param.substring(endpoint_str.len(), param.len());
                 let host = Url::parse(host).unwrap().host().unwrap().to_string();
@@ -337,7 +378,7 @@ fn parse_endpoint(endpoint: String) -> Result<EndPointParams, &'static str> {
                 //get access key
                 let accesskey_str = "accesskey=";
                 if !param.starts_with(accesskey_str) {
-                    return Err("Access Key invalid");
+                    return Err("Access Key invalid".to_string());
                 }
                 let access_key = param.substring(accesskey_str.len(), param.len());
                 endpoint.access_key = access_key.to_string();
@@ -368,17 +409,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let email_request = SentEmail {
             headers: None,
             sender: Some(sender),
-            content: Some(Content{
-                subject : Some("An exciting offer especially for you!".to_string()),
-                plain_text : Some("This exciting offer was created especially for you, our most loyal customer.".to_string()),
-                html : Some("<html><head><title>Exciting offer!</title></head><body><h1>This exciting offer was created especially for you, our most loyal customer.</h1></body></html>".to_string())
+            content: Some(Content {
+                subject: Some("An exciting offer especially for you!".to_string()),
+                plain_text: Some("This exciting offer was created especially for you, our most loyal customer.".to_string()),
+                html: Some("<html><head><title>Exciting offer!</title></head><body><h1>This exciting offer was created especially for you, our most loyal customer.</h1></body></html>".to_string())
             }),
             importance: Some("normal".to_string()),
-            recipients: Some(Recipients{
+            recipients: Some(Recipients {
                 to: Some(vec![
-                    ReplyTo{
+                    ReplyTo {
                         email: Some(reply_email_to),
-                        display_name : Some(reply_email_to_display)
+                        display_name: Some(reply_email_to_display)
                     },
                 ]),
                 cc: None,
@@ -388,39 +429,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             reply_to: None,
             disable_user_engagement_tracking: Some(false),
         };
-
-        let message_resp_id = send_email(
+        let resp_send_email = send_email(
             &host_name.to_string(),
             &access_key.to_string(),
             &request_id,
             &email_request,
-        )
-        .await
-        .unwrap();
-        info!("email was sent with message id : {}", message_resp_id);
-        loop {
-            let status = get_email_status(
-                &host_name.to_string(),
-                &access_key.to_string(),
-                &message_resp_id,
-            )
-            .await
-            .unwrap();
-            info!("get status of [{}] => {}", status.message_id, status.status);
-
-            match EmailStatusName::from_str(status.status.as_str()).unwrap() {
-                EmailStatusName::Queued => {
-                    continue;
-                }
-                _ => {
+        ).await;
+        if let Ok(message_resp_id) = resp_send_email {
+            info!("email was sent with message id : {}", message_resp_id);
+            loop {
+                let resp_status = get_email_status(
+                    &host_name.to_string(),
+                    &access_key.to_string(),
+                    &message_resp_id,
+                ).await;
+                if let Ok(status) = resp_status {
+                    info!("get status of [{}] => {}", status.message_id, status.status);
+                    match EmailStatusName::from_str(status.status.as_str()).unwrap() {
+                        EmailStatusName::Queued => {
+                            continue;
+                        }
+                        _ => {
+                            break;
+                        }
+                    }
+                }else{
+                    error!("{}",  resp_status.err().unwrap());
                     break;
                 }
             }
+            info!("========");
+        }else{
+            error!("{}",resp_send_email.err().unwrap());
         }
-        info!("========");
-    } else {
-        error!("{}", res_parse_endpoint.err().unwrap());
     }
-
     Ok(())
 }
