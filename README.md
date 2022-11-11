@@ -27,9 +27,9 @@ cargo run
 
 Get from Azure Portal
 
-- ![CONNECTION_STR](images/image2.jpg)
-
-- ![SENDER]((images/image1.jpg))
-
+- CONNECTION_STR
+![Alt text](https://github.com/preedep/rust_azure_email_communication/blob/develop/images/image2.png "Connection String")
+- SENDER
+![Alt text](https://github.com/preedep/rust_azure_email_communication/blob/develop/images/image1.png "Sender")
 
 
