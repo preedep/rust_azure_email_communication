@@ -6,3 +6,4 @@ Cargo.lock
 .idea/modules.xml
 .idea/rust_azure_email_communication.iml
 .idea/vcs.xml
+run.json
