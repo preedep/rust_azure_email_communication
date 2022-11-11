@@ -1,6 +1,6 @@
 use hmac::{Hmac, Mac};
 use httpdate::fmt_http_date;
-use log::{debug};
+use log::{debug, warn};
 use reqwest::header::HeaderMap;
 use sha2::{Digest, Sha256};
 use std::{ fmt};
@@ -14,7 +14,7 @@ use crate::models::EndPointParams;
 
 type HmacSha256 = Hmac<Sha256>;
 
-pub fn compute_content_sha256(content: String) -> String {
+pub fn compute_content_sha256(content: &String) -> String {
 
     let mut hasher = Sha256::new();
     hasher.update(content.as_bytes());
@@ -22,7 +22,7 @@ pub fn compute_content_sha256(content: String) -> String {
     return base64::encode(&result);
 }
 
-pub fn compute_signature(string_to_signed: String, secret: String) -> String {
+pub fn compute_signature(string_to_signed: &String, secret: &String) -> String {
     let mut mac = HmacSha256::new_from_slice(
         &base64::decode(secret).expect("HMAC compute decode secret failed"),
     )
@@ -35,7 +35,7 @@ pub fn compute_signature(string_to_signed: String, secret: String) -> String {
     return base64::encode(code_bytes);
 }
 
-pub fn parse_endpoint(endpoint: String) -> Result<EndPointParams, String> {
+pub fn parse_endpoint(endpoint: &String) -> Result<EndPointParams, String> {
     debug!("{}", "parse_endpoint");
     let parameters: Split<&str> = endpoint.split(";");
     if parameters.clone().count() != 2 {
@@ -76,4 +76,45 @@ pub fn parse_endpoint(endpoint: String) -> Result<EndPointParams, String> {
         idx = idx + 1;
     }
     Ok(endpoint)
+}
+
+pub fn get_request_header(url_endpoint:&Url,
+                          http_method:&str,
+                          request_id:&String,
+                          json_payload: &String,
+                          access_key: &String) -> Result<HeaderMap,String> {
+
+    let mut header = HeaderMap::new();
+    let compute_hash = compute_content_sha256(json_payload);
+    //debug!("{:#?}",json_email_request);
+    let now = SystemTime::now();
+    let http_date = fmt_http_date(now);
+
+
+    header.insert("Content-Type", "application/json".parse().unwrap());
+    header.insert("repeatability-request-id", request_id.parse().unwrap());
+    header.insert("repeatability-first-sent", http_date.parse().unwrap());
+    header.insert("x-ms-date", http_date.clone().parse().unwrap());
+    header.insert("x-ms-content-sha256", compute_hash.parse().unwrap());
+
+    let host_authority = format!("{}", url_endpoint.host().unwrap(),);
+    let path_and_query = format!("{}?{}", url_endpoint.path(), url_endpoint.query().unwrap());
+    let string_to_sign = format!(
+        "{}\n{}\n{};{};{}",
+        http_method,
+        path_and_query,
+        http_date.clone(),
+        host_authority,
+        compute_hash.clone(),
+    );
+    debug!("{}\r\n", string_to_sign);
+
+    let authorization = format!(
+        "HMAC-SHA256 SignedHeaders=x-ms-date;host;x-ms-content-sha256&Signature={}",
+        compute_signature(&string_to_sign.to_string(), &access_key.to_string())
+    );
+    header.insert("Authorization", authorization.parse().unwrap());
+    debug!("{:#?}", header);
+
+    Ok(header)
 }

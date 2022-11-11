@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let reply_email_to = env::var("REPLY_EMAIL").unwrap();
     let reply_email_to_display = env::var("REPLY_EMAIL_DISPLAY").unwrap();
 
-    let res_parse_endpoint = parse_endpoint(connection_str);
+    let res_parse_endpoint = parse_endpoint(&connection_str);
     if let Ok(endpoint) = res_parse_endpoint {
         let request_id = format!("{}", Uuid::new_v4());
         let access_key = endpoint.access_key;
