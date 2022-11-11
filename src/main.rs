@@ -2,15 +2,13 @@ use std::env;
 use std::str::FromStr;
 use log::{error, info};
 use uuid::Uuid;
-use crate::email_status::get_email_status;
 use crate::models::{Content, EmailStatusName, Recipients, ReplyTo, SentEmail};
-use crate::send_email::send_email;
+use crate::email::{get_email_status, send_email};
 use crate::utils::parse_endpoint;
 
 mod models;
 mod utils;
-mod send_email;
-mod email_status;
+mod email;
 
 
 #[tokio::main]
