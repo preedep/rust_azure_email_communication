@@ -13,6 +13,7 @@ How to create Azure Communication Service?
 [Create Email Service](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/email/create-email-communication-resource)
 
 
+How to run my example code , please setup environment variables follow this example below.
 ````
 export CONNECTION_STR="xxxxx-get-from-Azure-Portal" 
 export RUST_LOG=info 
@@ -23,4 +24,12 @@ export REPLY_EMAIL_DISPLAY="xxxx@digital"
 cargo run
 
 ````
+
+Get from Azure Portal
+
+- ![CONNECTION_STR](images/image2.jpg)
+
+- ![SENDER]((images/image1.jpg))
+
+
 
