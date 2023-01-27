@@ -1,7 +1,8 @@
-use log::{debug, error};
+use log::debug;
 use url::Url;
 use crate::models::{CommunicationErrorResponse, EmailStatus, SentEmail};
-use crate::utils::{get_request_header};
+use crate::utils::get_request_header;
+
 
 
 pub async fn get_email_status(
@@ -79,11 +80,11 @@ pub async fn send_email(
             }
             Ok(message_id.to_string())
         }else{
-            let error_reponse = resp.json::<CommunicationErrorResponse>().await;
-            if let Ok(body) = error_reponse {
+            let error_response = resp.json::<CommunicationErrorResponse>().await;
+            if let Ok(body) = error_response {
                 return Err(body.error.message);
             }else{
-                return Err(error_reponse.err().unwrap().to_string())
+                return Err(error_response.err().unwrap().to_string())
             }
         }
     }else{
