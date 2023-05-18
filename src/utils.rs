@@ -1,12 +1,12 @@
 use hmac::{Hmac, Mac};
 use httpdate::fmt_http_date;
-use log::{debug};
+use log::debug;
 use reqwest::header::HeaderMap;
 use sha2::{Digest, Sha256};
 
-use std::str::{Split};
+use base64::{engine::general_purpose, Engine as _};
+use std::str::Split;
 use std::time::SystemTime;
-use base64::{Engine as _, engine::{general_purpose}};
 
 use substring::Substring;
 use url::Url;
@@ -19,14 +19,15 @@ pub fn compute_content_sha256(content: &String) -> String {
     let mut hasher = Sha256::new();
     hasher.update(content.as_bytes());
     let result = hasher.finalize();
-    return  general_purpose::STANDARD.encode(&result);
+    return general_purpose::STANDARD.encode(&result);
 }
 
 pub fn compute_signature(string_to_signed: &String, secret: &String) -> String {
     let mut mac = HmacSha256::new_from_slice(
         /*&base64::decode(secret).expect("HMAC compute decode secret failed")*/
-        &general_purpose::STANDARD.decode(secret).expect("HMAC compute decode secret failed")
-        ,
+        &general_purpose::STANDARD
+            .decode(secret)
+            .expect("HMAC compute decode secret failed"),
     )
     .expect("HMAC compuate_signature can take key of any size");
 

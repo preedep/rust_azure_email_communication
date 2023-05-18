@@ -1,6 +1,6 @@
 use crate::models::{CommunicationErrorResponse, EmailStatus, SentEmail, SentEmailResponse};
 use crate::utils::get_request_header;
-use log::{debug};
+use log::debug;
 use url::Url;
 
 pub async fn get_email_status(
@@ -8,7 +8,6 @@ pub async fn get_email_status(
     access_key: &String,
     request_id: &String,
 ) -> Result<EmailStatus, Box<dyn std::error::Error>> {
-
     let url = format!(
         "https://{}/emails/operations/{}/status?api-version=2023-01-15-preview",
         host_name, request_id,
@@ -52,7 +51,6 @@ pub async fn send_email(
     request_id: &String,
     request_email: &SentEmail,
 ) -> Result<String, String> {
-
     let url = format!(
         "https://{}/emails:send?api-version=2023-01-15-preview",
         host_name
