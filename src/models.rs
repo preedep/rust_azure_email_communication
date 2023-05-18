@@ -1,49 +1,62 @@
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
-use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SentEmailResponse {
+    #[serde(rename = "id")]
+    pub(crate) id: Option<String>,
+
+    #[serde(rename = "status")]
+    pub(crate) status: Option<String>,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SentEmail {
     #[serde(rename = "headers")]
     pub(crate) headers: Option<Vec<Header>>,
 
-    #[serde(rename = "sender")]
+    #[serde(rename = "senderAddress")]
     pub(crate) sender: Option<String>,
 
     #[serde(rename = "content")]
-    pub(crate) content: Option<Content>,
+    pub(crate) content: Option<EmailContent>,
 
-    #[serde(rename = "importance")]
-    pub(crate) importance: Option<String>,
-
+    /*
+        #[serde(rename = "importance")]
+        pub(crate) importance: Option<String>,
+    */
     #[serde(rename = "recipients")]
     pub(crate) recipients: Option<Recipients>,
 
     #[serde(rename = "attachments")]
-    pub(crate) attachments: Option<Vec<Attachment>>,
+    pub(crate) attachments: Option<Vec<EmailAttachment>>,
 
     #[serde(rename = "replyTo")]
-    pub(crate) reply_to: Option<Vec<ReplyTo>>,
+    pub(crate) reply_to: Option<Vec<EmailAddress>>,
 
-    #[serde(rename = "disableUserEngagementTracking")]
-    pub(crate) disable_user_engagement_tracking: Option<bool>,
+    /*
+        #[serde(rename = "disableUserEngagementTracking")]
+        pub(crate) disable_user_engagement_tracking: Option<bool>,
+    */
+    #[serde(rename = "userEngagementTrackingDisabled")]
+    pub(crate) user_engagement_tracking_disabled: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Attachment {
+pub struct EmailAttachment {
     #[serde(rename = "name")]
     name: Option<String>,
 
-    #[serde(rename = "attachmentType")]
+    #[serde(rename = "contentType")]
     attachment_type: Option<String>,
 
-    #[serde(rename = "contentBytesBase64")]
+    #[serde(rename = "contentInBase64")]
     content_bytes_base64: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Content {
+pub struct EmailContent {
     #[serde(rename = "subject")]
     pub(crate) subject: Option<String>,
 
@@ -66,18 +79,17 @@ pub struct Header {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Recipients {
     #[serde(rename = "to")]
-    pub(crate) to: Option<Vec<ReplyTo>>,
+    pub(crate) to: Option<Vec<EmailAddress>>,
 
-    #[serde(rename = "CC")]
-    pub(crate) cc: Option<Vec<ReplyTo>>,
+    #[serde(rename = "cc")]
+    pub(crate) cc: Option<Vec<EmailAddress>>,
 
-    #[serde(rename = "bCC")]
-    pub(crate) b_cc: Option<Vec<ReplyTo>>,
+    #[serde(rename = "bcc")]
+    pub(crate) b_cc: Option<Vec<EmailAddress>>,
 }
-
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ReplyTo {
-    #[serde(rename = "email")]
+pub struct EmailAddress {
+    #[serde(rename = "address")]
     pub(crate) email: Option<String>,
 
     #[serde(rename = "displayName")]
@@ -86,14 +98,14 @@ pub struct ReplyTo {
 
 #[derive(Serialize, Deserialize)]
 pub struct EmailStatus {
-    #[serde(rename = "messageId")]
+    #[serde(rename = "id")]
     pub(crate) message_id: String,
 
     #[serde(rename = "status")]
     pub(crate) status: String,
 }
 
-#[derive(Serialize, Deserialize,Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CommunicationError {
     #[serde(rename = "code")]
     code: String,
@@ -111,12 +123,11 @@ pub struct CommunicationError {
     innererror: Option<Box<CommunicationError>>,
 }
 
-#[derive(Serialize, Deserialize,Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CommunicationErrorResponse {
     #[serde(rename = "error")]
     pub(crate) error: CommunicationError,
 }
-
 
 #[derive(Debug)]
 pub struct EndPointParams {
@@ -154,4 +165,3 @@ impl FromStr for EmailStatusName {
         }
     }
 }
-

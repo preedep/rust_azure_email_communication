@@ -1,38 +1,40 @@
 use hmac::{Hmac, Mac};
 use httpdate::fmt_http_date;
-use log::{debug, warn};
+use log::{debug};
 use reqwest::header::HeaderMap;
 use sha2::{Digest, Sha256};
-use std::{ fmt};
-use std::str::{FromStr, Split};
+
+use std::str::{Split};
 use std::time::SystemTime;
+use base64::{Engine as _, engine::{self, general_purpose}, alphabet};
+
 use substring::Substring;
 use url::Url;
-
 
 use crate::models::EndPointParams;
 
 type HmacSha256 = Hmac<Sha256>;
 
 pub fn compute_content_sha256(content: &String) -> String {
-
     let mut hasher = Sha256::new();
     hasher.update(content.as_bytes());
     let result = hasher.finalize();
-    return base64::encode(&result);
+    return  general_purpose::STANDARD.encode(&result);
 }
 
 pub fn compute_signature(string_to_signed: &String, secret: &String) -> String {
     let mut mac = HmacSha256::new_from_slice(
-        &base64::decode(secret).expect("HMAC compute decode secret failed"),
+        /*&base64::decode(secret).expect("HMAC compute decode secret failed")*/
+        &general_purpose::STANDARD.decode(secret).expect("HMAC compute decode secret failed")
+        ,
     )
-        .expect("HMAC compuate_signature can take key of any size");
+    .expect("HMAC compuate_signature can take key of any size");
 
     mac.update(string_to_signed.as_bytes());
 
     let result = mac.finalize();
     let code_bytes = result.into_bytes();
-    return base64::encode(code_bytes);
+    return general_purpose::STANDARD.encode(code_bytes);
 }
 
 pub fn parse_endpoint(endpoint: &String) -> Result<EndPointParams, String> {
@@ -78,18 +80,18 @@ pub fn parse_endpoint(endpoint: &String) -> Result<EndPointParams, String> {
     Ok(endpoint)
 }
 
-pub fn get_request_header(url_endpoint:&Url,
-                          http_method:&str,
-                          request_id:&String,
-                          json_payload: &String,
-                          access_key: &String) -> Result<HeaderMap,String> {
-
+pub fn get_request_header(
+    url_endpoint: &Url,
+    http_method: &str,
+    request_id: &String,
+    json_payload: &String,
+    access_key: &String,
+) -> Result<HeaderMap, String> {
     let mut header = HeaderMap::new();
     let compute_hash = compute_content_sha256(json_payload);
     //debug!("{:#?}",json_email_request);
     let now = SystemTime::now();
     let http_date = fmt_http_date(now);
-
 
     header.insert("Content-Type", "application/json".parse().unwrap());
     header.insert("repeatability-request-id", request_id.parse().unwrap());

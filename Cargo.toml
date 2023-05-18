@@ -17,6 +17,6 @@ hmac = "0.12"
 sha2 = "0.10"
 uuid = { version = "1.2" , features = ["v4","fast-rng","macro-diagnostics"]}
 httpdate = "1.0"
-base64 = "0.13"
+base64 = "0.21.0"
 url = "2.3"
 substring = "1.4.5"
