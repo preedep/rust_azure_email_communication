@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 
 use std::str::{Split};
 use std::time::SystemTime;
-use base64::{Engine as _, engine::{self, general_purpose}, alphabet};
+use base64::{Engine as _, engine::{general_purpose}};
 
 use substring::Substring;
 use url::Url;
