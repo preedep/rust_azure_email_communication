@@ -29,7 +29,7 @@ pub fn compute_signature(string_to_signed: &String, secret: &String) -> String {
             .decode(secret)
             .expect("HMAC compute decode secret failed"),
     )
-    .expect("HMAC compuate_signature can take key of any size");
+    .expect("HMAC compute_signature can take key of any size");
 
     mac.update(string_to_signed.as_bytes());
 
