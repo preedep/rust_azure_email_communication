@@ -1,9 +1,9 @@
 use crate::email::{get_email_status, send_email};
-use crate::models::{EmailAddress, EmailContent, EmailStatusName, Recipients, SentEmail};
+use crate::models::{EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmail};
 use crate::utils::parse_endpoint;
 use log::{error, info};
-use std::env;
-use std::str::FromStr;
+use std::{env, time};
+use std::thread::sleep;
 use uuid::Uuid;
 
 mod email;
@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 plain_text: Some("This exciting offer was created especially for you, our most loyal customer.".to_string()),
                 html: Some("<html><head><title>Exciting offer!</title></head><body><h1>This exciting offer was created especially for you, our most loyal customer.</h1></body></html>".to_string())
             }),
-            //importance: Some("normal".to_string()),
+
             recipients: Some(Recipients {
                 to: Some(vec![
                     EmailAddress {
@@ -56,9 +56,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             &email_request,
         )
         .await;
+
         if let Ok(message_resp_id) = resp_send_email {
             info!("email was sent with message id : {}", message_resp_id);
             loop {
+                sleep(time::Duration::from_secs(1));
+
                 let resp_status = get_email_status(
                     &host_name.to_string(),
                     &access_key.to_string(),
@@ -66,23 +69,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .await;
                 if let Ok(status) = resp_status {
-                    info!("get status of [{}] => {}", status.message_id, status.status);
-                    match EmailStatusName::from_str(status.status.as_str()).unwrap() {
-                        EmailStatusName::Queued => {
-                            continue;
-                        }
-                        _ => {
-                            break;
-                        }
+                    //let status = status.status.unwrap();
+                    info!("{}\r\n",status.to_string());
+                    match status {
+                        EmailSendStatusType::Unknown => {break;}
+                        EmailSendStatusType::Canceled => {break;}
+                        EmailSendStatusType::Failed => {break;}
+                        EmailSendStatusType::NotStarted => {}
+                        EmailSendStatusType::Running => {}
+                        EmailSendStatusType::Succeeded => {break;}
                     }
                 } else {
-                    error!("{}", resp_status.err().unwrap());
+                    error!("{}",resp_status.err().unwrap().message.unwrap());
                     break;
                 }
             }
             info!("========");
-        } else {
-            error!("{}", resp_send_email.err().unwrap());
         }
     }
     Ok(())

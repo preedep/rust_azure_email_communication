@@ -1,14 +1,61 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::{Formatter};
 use std::str::FromStr;
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct  EmailSendStatus(EmailSendStatusType);
+impl EmailSendStatus {
+    pub fn to_type(self) -> EmailSendStatusType {
+        self.0
+    }
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub enum EmailSendStatusType {
+    Unknown,
+    Canceled,
+    Failed,
+    NotStarted,
+    Running,
+    Succeeded
+}
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SentEmailResponse {
     #[serde(rename = "id")]
     pub(crate) id: Option<String>,
 
     #[serde(rename = "status")]
-    pub(crate) status: Option<String>,
+    pub(crate) status: Option<EmailSendStatus>,
+
+    #[serde(rename = "error")]
+    pub(crate) error: Option<ErrorDetail>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ErrorDetail {
+    #[serde(rename = "additionalInfo")]
+    pub(crate) additional_info: Option<Vec<ErrorAdditionalInfo>>,
+
+     #[serde(rename = "code")]
+    pub(crate) code: Option<String>,
+
+   // #[serde(rename = "details")]
+   // pub(crate) details: Option<ErrorDetail>,
+
+    #[serde(rename = "message")]
+    pub(crate) message: Option<String>,
+
+    #[serde(rename = "target")]
+    pub(crate) target: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ErrorAdditionalInfo {
+    #[serde(rename = "info")]
+    pub(crate) info: Option<String>,
+
+    #[serde(rename = "type")]
+    pub(crate) info_type: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -22,10 +69,6 @@ pub struct SentEmail {
     #[serde(rename = "content")]
     pub(crate) content: Option<EmailContent>,
 
-    /*
-        #[serde(rename = "importance")]
-        pub(crate) importance: Option<String>,
-    */
     #[serde(rename = "recipients")]
     pub(crate) recipients: Option<Recipients>,
 
@@ -35,10 +78,6 @@ pub struct SentEmail {
     #[serde(rename = "replyTo")]
     pub(crate) reply_to: Option<Vec<EmailAddress>>,
 
-    /*
-        #[serde(rename = "disableUserEngagementTracking")]
-        pub(crate) disable_user_engagement_tracking: Option<bool>,
-    */
     #[serde(rename = "userEngagementTrackingDisabled")]
     pub(crate) user_engagement_tracking_disabled: Option<bool>,
 }
@@ -96,37 +135,11 @@ pub struct EmailAddress {
     pub(crate) display_name: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct EmailStatus {
-    #[serde(rename = "id")]
-    pub(crate) message_id: String,
-
-    #[serde(rename = "status")]
-    pub(crate) status: String,
-}
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct CommunicationError {
-    #[serde(rename = "code")]
-    code: String,
-
-    #[serde(rename = "message")]
-    pub(crate) message: String,
-
-    #[serde(rename = "target")]
-    target: Option<String>,
-
-    #[serde(rename = "details")]
-    details: Option<Vec<Box<CommunicationError>>>,
-
-    #[serde(rename = "innererror")]
-    innererror: Option<Box<CommunicationError>>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CommunicationErrorResponse {
+pub struct ErrorResponse {
     #[serde(rename = "error")]
-    pub(crate) error: CommunicationError,
+    pub(crate) error: Option<ErrorDetail>,
 }
 
 #[derive(Debug)]
@@ -135,33 +148,37 @@ pub struct EndPointParams {
     pub(crate) access_key: String,
 }
 
-pub enum EmailStatusName {
-    Unknown = 0,
-    Queued = 1,
-    OutForDelivery = 2,
-    Dropped = 3,
-}
-
-impl fmt::Display for EmailStatusName {
+impl fmt::Display for EmailSendStatusType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            EmailStatusName::OutForDelivery => write!(f, "OutForDelivery"),
-            EmailStatusName::Dropped => write!(f, "Dropped"),
-            EmailStatusName::Queued => write!(f, "Queued"),
-            EmailStatusName::Unknown => write!(f, ""),
+            EmailSendStatusType::Canceled => write!(f, "Canceled"),
+            EmailSendStatusType::Failed => write!(f, "Failed"),
+            EmailSendStatusType::NotStarted => write!(f, "NotStarted"),
+            EmailSendStatusType::Running => write!(f, "Running"),
+            EmailSendStatusType::Succeeded => write!(f,"Succeeded"),
+            _ => write!(f,"Unknown")
         }
     }
 }
 
-impl FromStr for EmailStatusName {
+impl FromStr for EmailSendStatusType {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "OutForDelivery" => Ok(EmailStatusName::OutForDelivery),
-            "Dropped" => Ok(EmailStatusName::Dropped),
-            "Queued" => Ok(EmailStatusName::Queued),
-            _ => Ok(EmailStatusName::Unknown),
+            "Canceled" => Ok(EmailSendStatusType::Canceled),
+            "Failed" => Ok(EmailSendStatusType::Failed),
+            "NotStarted" => Ok(EmailSendStatusType::NotStarted),
+            "Running" => Ok(EmailSendStatusType::Running),
+            "Succeeded" => Ok(EmailSendStatusType::Succeeded),
+            _ => Ok(EmailSendStatusType::Unknown),
         }
+    }
+}
+
+impl fmt::Display for EmailSendStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f,"{}",self.0).expect("EmailSendStatus: panic message");
+        Ok(())
     }
 }

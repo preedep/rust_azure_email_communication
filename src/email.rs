@@ -1,21 +1,25 @@
-use crate::models::{CommunicationErrorResponse, EmailStatus, SentEmail, SentEmailResponse};
+use crate::models::{SentEmailResponse, SentEmail, ErrorDetail, EmailSendStatusType};
 use crate::utils::get_request_header;
-use log::debug;
+use log::{debug};
+use reqwest::StatusCode;
 use url::Url;
+
+
+type EmailResult<T> = std::result::Result<T, ErrorDetail>;
+
 
 pub async fn get_email_status(
     host_name: &String,
     access_key: &String,
     request_id: &String,
-) -> Result<EmailStatus, Box<dyn std::error::Error>> {
+) -> EmailResult<EmailSendStatusType> {
     let url = format!(
-        "https://{}/emails/operations/{}/status?api-version=2023-01-15-preview",
+        "https://{}/emails/operations/{}?api-version=2023-01-15-preview",
         host_name, request_id,
     );
-
-    debug!("{}", url);
+    //debug!("{}", url);
     let url_endpoint = Url::parse(url.as_str()).unwrap();
-    debug!("{:#?}", url_endpoint);
+    //debug!("{:#?}", url_endpoint);
     /*
      cal HMAC-SHA256
     */
@@ -30,19 +34,25 @@ pub async fn get_email_status(
         &access_key,
     )
     .unwrap();
-    let resp = client.get(url).headers(header).send().await?;
-    debug!("{:#?}", resp);
-    if resp.status().is_success() {
-        return Ok(resp.json::<EmailStatus>().await.unwrap());
-    } else {
-        if let Ok(body) = resp.text().await {
-            debug!("{}", body);
+    let resp = client.get(url).headers(header).send().await;
+
+    return if let Ok(resp) = resp {
+        //debug!("{:#?}", resp);
+        if resp.status() == StatusCode::OK {
+            let email_resp = resp.json::<SentEmailResponse>().await.expect("Response Invalid");
+            Ok(email_resp.status.unwrap().to_type())
+        }else{
+            let email_resp = resp.json::<ErrorDetail>().await.expect("Response Invalid");
+            Err(email_resp)
         }
-    }
-    Ok(EmailStatus {
-        message_id: "".to_string(),
-        status: "".to_string(),
-    })
+    } else {
+        Err(ErrorDetail{
+            additional_info: None,
+            code: None,
+            message: Some(resp.err().unwrap().to_string()),
+            target: None,
+        })
+    };
 }
 
 pub async fn send_email(
@@ -50,15 +60,13 @@ pub async fn send_email(
     access_key: &String,
     request_id: &String,
     request_email: &SentEmail,
-) -> Result<String, String> {
+) -> EmailResult<String> {
     let url = format!(
         "https://{}/emails:send?api-version=2023-01-15-preview",
         host_name
     );
     //debug!("{}", url);
     let url_endpoint = Url::parse(url.as_str()).unwrap();
-    debug!("{:#?}", url_endpoint);
-    debug!("{:#?}", request_email);
     /*
      cal HMAC-SHA256
     */
@@ -82,23 +90,20 @@ pub async fn send_email(
         .await;
 
     return if let Ok(resp) = resp {
-        if resp.status().is_success() {
-            debug!("{:#?}", resp);
-            let email_resp = resp.json::<SentEmailResponse>().await;
-            if let Ok(resp) = email_resp {
-                Ok(resp.id.unwrap_or("".to_string()))
-            } else {
-                Err(email_resp.err().unwrap().to_string())
-            }
-        } else {
-            let error_response = resp.json::<CommunicationErrorResponse>().await;
-            if let Ok(body) = error_response {
-                Err(body.error.message)
-            } else {
-                Err(error_response.err().unwrap().to_string())
-            }
+        //debug!("{:#?}", resp);
+        if resp.status() == StatusCode::ACCEPTED {
+            let email_resp = resp.json::<SentEmailResponse>().await.expect("Response Invalid");
+            Ok(email_resp.id.unwrap_or("0".to_string()))
+        }else{
+            let email_resp = resp.json::<ErrorDetail>().await.expect("Response Invalid");
+            Err(email_resp)
         }
     } else {
-        Err(resp.err().unwrap().to_string())
+        Err(ErrorDetail{
+            additional_info: None,
+            code: None,
+            message: Some(resp.err().unwrap().to_string()),
+            target: None,
+        })
     };
 }
