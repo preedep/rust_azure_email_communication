@@ -1,6 +1,5 @@
 use crate::models::{SentEmailResponse, SentEmail, ErrorDetail, EmailSendStatusType};
 use crate::utils::get_request_header;
-use log::{debug};
 use reqwest::StatusCode;
 use url::Url;
 
