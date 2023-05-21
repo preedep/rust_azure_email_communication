@@ -14,6 +14,7 @@ mod utils;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
+
     let connection_str = env::var("CONNECTION_STR").unwrap();
     let sender = env::var("SENDER").unwrap();
     let reply_email_to = env::var("REPLY_EMAIL").unwrap();
