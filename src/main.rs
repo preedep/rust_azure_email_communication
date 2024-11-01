@@ -12,8 +12,9 @@ mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
+   pretty_env_logger::init();
 
+    dotenv::dotenv().ok();
 
     let connection_str = env::var("CONNECTION_STR").unwrap();
     let sender = env::var("SENDER").unwrap();
