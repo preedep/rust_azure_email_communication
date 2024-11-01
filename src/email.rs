@@ -1,11 +1,10 @@
-use crate::models::{SentEmailResponse, SentEmail, ErrorDetail, EmailSendStatusType};
+use crate::models::{EmailSendStatusType, ErrorDetail, SentEmail, SentEmailResponse};
 use crate::utils::get_request_header;
+use log::debug;
 use reqwest::StatusCode;
 use url::Url;
 
-
 type EmailResult<T> = std::result::Result<T, ErrorDetail>;
-
 
 pub async fn get_email_status(
     host_name: &String,
@@ -38,14 +37,17 @@ pub async fn get_email_status(
     return if let Ok(resp) = resp {
         //debug!("{:#?}", resp);
         if resp.status() == StatusCode::OK {
-            let email_resp = resp.json::<SentEmailResponse>().await.expect("Response Invalid");
+            let email_resp = resp
+                .json::<SentEmailResponse>()
+                .await
+                .expect("Response Invalid");
             Ok(email_resp.status.unwrap().to_type())
-        }else{
+        } else {
             let email_resp = resp.json::<ErrorDetail>().await.expect("Response Invalid");
             Err(email_resp)
         }
     } else {
-        Err(ErrorDetail{
+        Err(ErrorDetail {
             additional_info: None,
             code: None,
             message: Some(resp.err().unwrap().to_string()),
@@ -89,16 +91,19 @@ pub async fn send_email(
         .await;
 
     return if let Ok(resp) = resp {
-        //debug!("{:#?}", resp);
+        debug!("{:#?}", resp);
         if resp.status() == StatusCode::ACCEPTED {
-            let email_resp = resp.json::<SentEmailResponse>().await.expect("Response Invalid");
+            let email_resp = resp
+                .json::<SentEmailResponse>()
+                .await
+                .expect("Response Invalid");
             Ok(email_resp.id.unwrap_or("0".to_string()))
-        }else{
+        } else {
             let email_resp = resp.json::<ErrorDetail>().await.expect("Response Invalid");
             Err(email_resp)
         }
     } else {
-        Err(ErrorDetail{
+        Err(ErrorDetail {
             additional_info: None,
             code: None,
             message: Some(resp.err().unwrap().to_string()),

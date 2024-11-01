@@ -2,8 +2,8 @@ use crate::email::{get_email_status, send_email};
 use crate::models::{EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmail};
 use crate::utils::parse_endpoint;
 use log::{error, info};
-use std::{env, time};
 use std::thread::sleep;
+use std::{env, time};
 use uuid::Uuid;
 
 mod email;
@@ -12,7 +12,7 @@ mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-   pretty_env_logger::init();
+    pretty_env_logger::init();
 
     dotenv::dotenv().ok();
 
@@ -62,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Ok(message_resp_id) = resp_send_email {
             info!("email was sent with message id : {}", message_resp_id);
             loop {
-                sleep(time::Duration::from_secs(1));
+                tokio::time::sleep(time::Duration::from_secs(1)).await;
 
                 let resp_status = get_email_status(
                     &host_name.to_string(),
@@ -72,17 +72,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await;
                 if let Ok(status) = resp_status {
                     //let status = status.status.unwrap();
-                    info!("{}\r\n",status.to_string());
+                    info!("{}\r\n", status.to_string());
                     match status {
-                        EmailSendStatusType::Unknown => {break;}
-                        EmailSendStatusType::Canceled => {break;}
-                        EmailSendStatusType::Failed => {break;}
+                        EmailSendStatusType::Unknown => {
+                            break;
+                        }
+                        EmailSendStatusType::Canceled => {
+                            break;
+                        }
+                        EmailSendStatusType::Failed => {
+                            break;
+                        }
                         EmailSendStatusType::NotStarted => {}
                         EmailSendStatusType::Running => {}
-                        EmailSendStatusType::Succeeded => {break;}
+                        EmailSendStatusType::Succeeded => {
+                            break;
+                        }
                     }
                 } else {
-                    error!("{}",resp_status.err().unwrap().message.unwrap());
+                    error!("{}", resp_status.err().unwrap().message.unwrap());
                     break;
                 }
             }

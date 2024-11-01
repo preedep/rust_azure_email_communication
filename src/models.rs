@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::{Formatter};
+use std::fmt::Formatter;
 use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct  EmailSendStatus(EmailSendStatusType);
+pub struct EmailSendStatus(EmailSendStatusType);
 impl EmailSendStatus {
     pub fn to_type(self) -> EmailSendStatusType {
         self.0
@@ -17,7 +17,7 @@ pub enum EmailSendStatusType {
     Failed,
     NotStarted,
     Running,
-    Succeeded
+    Succeeded,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SentEmailResponse {
@@ -28,7 +28,7 @@ pub struct SentEmailResponse {
     pub(crate) status: Option<EmailSendStatus>,
 
     #[serde(rename = "error")]
-    pub(crate) error: Option<ErrorDetail>
+    pub(crate) error: Option<ErrorDetail>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -36,12 +36,11 @@ pub struct ErrorDetail {
     #[serde(rename = "additionalInfo")]
     pub(crate) additional_info: Option<Vec<ErrorAdditionalInfo>>,
 
-     #[serde(rename = "code")]
+    #[serde(rename = "code")]
     pub(crate) code: Option<String>,
 
-   // #[serde(rename = "details")]
-   // pub(crate) details: Option<ErrorDetail>,
-
+    // #[serde(rename = "details")]
+    // pub(crate) details: Option<ErrorDetail>,
     #[serde(rename = "message")]
     pub(crate) message: Option<String>,
 
@@ -135,7 +134,6 @@ pub struct EmailAddress {
     pub(crate) display_name: Option<String>,
 }
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorResponse {
     #[serde(rename = "error")]
@@ -155,8 +153,8 @@ impl fmt::Display for EmailSendStatusType {
             EmailSendStatusType::Failed => write!(f, "Failed"),
             EmailSendStatusType::NotStarted => write!(f, "NotStarted"),
             EmailSendStatusType::Running => write!(f, "Running"),
-            EmailSendStatusType::Succeeded => write!(f,"Succeeded"),
-            _ => write!(f,"Unknown")
+            EmailSendStatusType::Succeeded => write!(f, "Succeeded"),
+            _ => write!(f, "Unknown"),
         }
     }
 }
@@ -178,7 +176,7 @@ impl FromStr for EmailSendStatusType {
 
 impl fmt::Display for EmailSendStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f,"{}",self.0).expect("EmailSendStatus: panic message");
+        write!(f, "{}", self.0).expect("EmailSendStatus: panic message");
         Ok(())
     }
 }
