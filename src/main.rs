@@ -59,42 +59,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .await;
 
-        if let Ok(message_resp_id) = resp_send_email {
-            info!("email was sent with message id : {}", message_resp_id);
-            loop {
-                tokio::time::sleep(time::Duration::from_secs(1)).await;
+        match resp_send_email {
+            Ok(message_resp_id) => {
+                info!("email was sent with message id : {}", message_resp_id);
+                loop {
+                    tokio::time::sleep(time::Duration::from_secs(1)).await;
 
-                let resp_status = get_email_status(
-                    &host_name.to_string(),
-                    &access_key.to_string(),
-                    &message_resp_id,
-                )
-                .await;
-                if let Ok(status) = resp_status {
-                    //let status = status.status.unwrap();
-                    info!("{}\r\n", status.to_string());
-                    match status {
-                        EmailSendStatusType::Unknown => {
-                            break;
+                    let resp_status = get_email_status(
+                        &host_name.to_string(),
+                        &access_key.to_string(),
+                        &message_resp_id,
+                    )
+                        .await;
+                    if let Ok(status) = resp_status {
+                        //let status = status.status.unwrap();
+                        info!("{}\r\n", status.to_string());
+                        match status {
+                            EmailSendStatusType::Unknown => {
+                                break;
+                            }
+                            EmailSendStatusType::Canceled => {
+                                break;
+                            }
+                            EmailSendStatusType::Failed => {
+                                break;
+                            }
+                            EmailSendStatusType::NotStarted => {}
+                            EmailSendStatusType::Running => {}
+                            EmailSendStatusType::Succeeded => {
+                                break;
+                            }
                         }
-                        EmailSendStatusType::Canceled => {
-                            break;
-                        }
-                        EmailSendStatusType::Failed => {
-                            break;
-                        }
-                        EmailSendStatusType::NotStarted => {}
-                        EmailSendStatusType::Running => {}
-                        EmailSendStatusType::Succeeded => {
-                            break;
-                        }
+                    } else {
+                        error!("Error getting email status: {:?}", resp_status);
+                        break;
                     }
-                } else {
-                    error!("{}", resp_status.err().unwrap().message.unwrap());
-                    break;
                 }
+                info!("========");
             }
-            info!("========");
+            Err(e) => {
+                error!("Error sending email: {:?}", e);
+            }
         }
     }
     Ok(())

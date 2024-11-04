@@ -1,10 +1,10 @@
-use crate::models::{EmailSendStatusType, ErrorDetail, SentEmail, SentEmailResponse};
+use crate::models::{EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse};
 use crate::utils::get_request_header;
 use log::debug;
 use reqwest::StatusCode;
 use url::Url;
 
-type EmailResult<T> = std::result::Result<T, ErrorDetail>;
+type EmailResult<T> = std::result::Result<T, ErrorResponse>;
 
 pub async fn get_email_status(
     host_name: &String,
@@ -34,7 +34,7 @@ pub async fn get_email_status(
     .unwrap();
     let resp = client.get(url).headers(header).send().await;
 
-    return if let Ok(resp) = resp {
+    if let Ok(resp) = resp {
         //debug!("{:#?}", resp);
         if resp.status() == StatusCode::OK {
             let email_resp = resp
@@ -43,17 +43,22 @@ pub async fn get_email_status(
                 .expect("Response Invalid");
             Ok(email_resp.status.unwrap().to_type())
         } else {
-            let email_resp = resp.json::<ErrorDetail>().await.expect("Response Invalid");
+            let email_resp = resp.json::<ErrorResponse>().await.expect("Response Invalid");
             Err(email_resp)
         }
     } else {
-        Err(ErrorDetail {
-            additional_info: None,
-            code: None,
-            message: Some(resp.err().unwrap().to_string()),
-            target: None,
-        })
-    };
+        let err_response = ErrorResponse{
+            error: Some(ErrorDetail{
+                additional_info: None,
+                code: None,
+                message: Some(resp.err().unwrap().to_string()),
+                target: None,
+            })
+        };
+        Err(
+            err_response
+           )
+    }
 }
 
 pub async fn send_email(
@@ -90,7 +95,7 @@ pub async fn send_email(
         .send()
         .await;
 
-    return if let Ok(resp) = resp {
+    if let Ok(resp) = resp {
         debug!("{:#?}", resp);
         if resp.status() == StatusCode::ACCEPTED {
             let email_resp = resp
@@ -99,15 +104,18 @@ pub async fn send_email(
                 .expect("Response Invalid");
             Ok(email_resp.id.unwrap_or("0".to_string()))
         } else {
-            let email_resp = resp.json::<ErrorDetail>().await.expect("Response Invalid");
+            let email_resp = resp.json::<ErrorResponse>().await.expect("Response Invalid");
             Err(email_resp)
         }
     } else {
-        Err(ErrorDetail {
-            additional_info: None,
-            code: None,
-            message: Some(resp.err().unwrap().to_string()),
-            target: None,
-        })
-    };
+        let err_response = ErrorResponse{
+            error: Some(ErrorDetail{
+                additional_info: None,
+                code: None,
+                message: Some(resp.err().unwrap().to_string()),
+                target: None,
+            })
+        };
+       Err(err_response)
+    }
 }
