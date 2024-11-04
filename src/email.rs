@@ -1,4 +1,6 @@
-use crate::models::{EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse};
+use crate::models::{
+    EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
+};
 use crate::utils::get_request_header;
 use log::debug;
 use reqwest::StatusCode;
@@ -43,21 +45,22 @@ pub async fn get_email_status(
                 .expect("Response Invalid");
             Ok(email_resp.status.unwrap().to_type())
         } else {
-            let email_resp = resp.json::<ErrorResponse>().await.expect("Response Invalid");
+            let email_resp = resp
+                .json::<ErrorResponse>()
+                .await
+                .expect("Response Invalid");
             Err(email_resp)
         }
     } else {
-        let err_response = ErrorResponse{
-            error: Some(ErrorDetail{
+        let err_response = ErrorResponse {
+            error: Some(ErrorDetail {
                 additional_info: None,
                 code: None,
                 message: Some(resp.err().unwrap().to_string()),
                 target: None,
-            })
+            }),
         };
-        Err(
-            err_response
-           )
+        Err(err_response)
     }
 }
 
@@ -104,18 +107,21 @@ pub async fn send_email(
                 .expect("Response Invalid");
             Ok(email_resp.id.unwrap_or("0".to_string()))
         } else {
-            let email_resp = resp.json::<ErrorResponse>().await.expect("Response Invalid");
+            let email_resp = resp
+                .json::<ErrorResponse>()
+                .await
+                .expect("Response Invalid");
             Err(email_resp)
         }
     } else {
-        let err_response = ErrorResponse{
-            error: Some(ErrorDetail{
+        let err_response = ErrorResponse {
+            error: Some(ErrorDetail {
                 additional_info: None,
                 code: None,
                 message: Some(resp.err().unwrap().to_string()),
                 target: None,
-            })
+            }),
         };
-       Err(err_response)
+        Err(err_response)
     }
 }

@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &access_key.to_string(),
                         &message_resp_id,
                     )
-                        .await;
+                    .await;
                     if let Ok(status) = resp_status {
                         //let status = status.status.unwrap();
                         info!("{}\r\n", status.to_string());
