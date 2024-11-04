@@ -31,7 +31,7 @@ pub struct SentEmailResponse {
     pub(crate) error: Option<ErrorDetail>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug,Default)]
 pub struct ErrorDetail {
     #[serde(rename = "additionalInfo")]
     pub(crate) additional_info: Option<Vec<ErrorAdditionalInfo>>,
