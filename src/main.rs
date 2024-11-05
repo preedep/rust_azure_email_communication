@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             attachments: None,
             reply_to: None,
             //disable_user_engagement_tracking: Some(false),
-            user_engagement_tracking_disabled: Some(true),
+            user_engagement_tracking_disabled: Some(false),
         };
 
         debug!("Email request: {:#?}", email_request);
