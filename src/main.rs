@@ -1,7 +1,7 @@
 use crate::email::{get_email_status, send_email};
 use crate::models::{EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmail};
 use crate::utils::parse_endpoint;
-use log::{error, info};
+use log::{debug, error, info};
 use std::thread::sleep;
 use std::{env, time};
 use uuid::Uuid;
@@ -29,14 +29,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let email_request = SentEmail {
             headers: None,
-            sender: Some(sender),
-            content: Some(EmailContent {
+            sender,
+            content: EmailContent {
                 subject: Some("An exciting offer especially for you!".to_string()),
                 plain_text: Some("This exciting offer was created especially for you, our most loyal customer.".to_string()),
                 html: Some("<html><head><title>Exciting offer!</title></head><body><h1>This exciting offer was created especially for you, our most loyal customer.</h1></body></html>".to_string())
-            }),
-
-            recipients: Some(Recipients {
+            },
+            recipients: Recipients {
                 to: Some(vec![
                     EmailAddress {
                         email: Some(reply_email_to),
@@ -45,12 +44,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ]),
                 cc: None,
                 b_cc: None,
-            }),
+            },
             attachments: None,
             reply_to: None,
             //disable_user_engagement_tracking: Some(false),
-            user_engagement_tracking_disabled: Some(false),
+            user_engagement_tracking_disabled: Some(true),
         };
+
+        debug!("Email request: {:#?}", email_request);
+
+
         let resp_send_email = send_email(
             &host_name.to_string(),
             &access_key.to_string(),

@@ -59,25 +59,25 @@ pub struct ErrorAdditionalInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SentEmail {
-    #[serde(rename = "headers")]
+    #[serde(rename = "headers",skip_serializing_if = "Option::is_none")]
     pub(crate) headers: Option<Vec<Header>>,
 
     #[serde(rename = "senderAddress")]
-    pub(crate) sender: Option<String>,
+    pub(crate) sender: String,
 
     #[serde(rename = "content")]
-    pub(crate) content: Option<EmailContent>,
+    pub(crate) content: EmailContent,
 
     #[serde(rename = "recipients")]
-    pub(crate) recipients: Option<Recipients>,
+    pub(crate) recipients: Recipients,
 
-    #[serde(rename = "attachments")]
+    #[serde(rename = "attachments",skip_serializing_if = "Option::is_none")]
     pub(crate) attachments: Option<Vec<EmailAttachment>>,
 
-    #[serde(rename = "replyTo")]
+    #[serde(rename = "replyTo",skip_serializing_if = "Option::is_none")]
     pub(crate) reply_to: Option<Vec<EmailAddress>>,
 
-    #[serde(rename = "userEngagementTrackingDisabled")]
+    #[serde(rename = "userEngagementTrackingDisabled",skip_serializing_if = "Option::is_none")]
     pub(crate) user_engagement_tracking_disabled: Option<bool>,
 }
 
