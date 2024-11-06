@@ -84,6 +84,80 @@ pub struct SentEmail {
     pub(crate) user_engagement_tracking_disabled: Option<bool>,
 }
 
+pub struct SentEmailBuilder {
+    headers: Option<Vec<Header>>,
+    sender: Option<String>,
+    content: Option<EmailContent>,
+    recipients: Option<Recipients>,
+    attachments: Option<Vec<EmailAttachment>>,
+    reply_to: Option<Vec<EmailAddress>>,
+    user_engagement_tracking_disabled: Option<bool>,
+}
+
+impl SentEmailBuilder {
+    pub fn new() -> Self {
+        SentEmailBuilder {
+            headers: None,
+            sender: None,
+            content: None,
+            recipients: None,
+            attachments: None,
+            reply_to: None,
+            user_engagement_tracking_disabled: None,
+        }
+    }
+
+    pub fn headers(mut self, headers: Vec<Header>) -> Self {
+        self.headers = Some(headers);
+        self
+    }
+
+    pub fn sender(mut self, sender: String) -> Self {
+        self.sender = Some(sender);
+        self
+    }
+
+    pub fn content(mut self, content: EmailContent) -> Self {
+        self.content = Some(content);
+        self
+    }
+
+    pub fn recipients(mut self, recipients: Recipients) -> Self {
+        self.recipients = Some(recipients);
+        self
+    }
+
+    pub fn attachments(mut self, attachments: Vec<EmailAttachment>) -> Self {
+        self.attachments = Some(attachments);
+        self
+    }
+
+    pub fn reply_to(mut self, reply_to: Vec<EmailAddress>) -> Self {
+        self.reply_to = Some(reply_to);
+        self
+    }
+
+    pub fn user_engagement_tracking_disabled(
+        mut self,
+        user_engagement_tracking_disabled: bool,
+    ) -> Self {
+        self.user_engagement_tracking_disabled = Some(user_engagement_tracking_disabled);
+        self
+    }
+
+    pub fn build(self) -> Result<SentEmail, &'static str> {
+        Ok(SentEmail {
+            headers: self.headers,
+            sender: self.sender.ok_or("Sender is required")?,
+            content: self.content.ok_or("Content is required")?,
+            recipients: self.recipients.ok_or("Recipients are required")?,
+            attachments: self.attachments,
+            reply_to: self.reply_to,
+            user_engagement_tracking_disabled: self.user_engagement_tracking_disabled,
+        })
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EmailAttachment {
     #[serde(rename = "name")]

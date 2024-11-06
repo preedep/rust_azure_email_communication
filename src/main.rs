@@ -1,5 +1,5 @@
 use crate::email::{get_email_status, send_email};
-use crate::models::{EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmail};
+use crate::models::{EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmail, SentEmailBuilder};
 use crate::utils::parse_endpoint;
 use log::{debug, error, info};
 use std::thread::sleep;
@@ -27,29 +27,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let access_key = endpoint.access_key;
         let host_name = endpoint.host_name;
 
-        let email_request = SentEmail {
-            headers: None,
-            sender,
-            content: EmailContent {
+        let email_request = SentEmailBuilder::new()
+            .sender(sender)
+            .content(EmailContent {
                 subject: Some("An exciting offer especially for you!".to_string()),
                 plain_text: Some("This exciting offer was created especially for you, our most loyal customer.".to_string()),
-                html: Some("<html><head><title>Exciting offer!</title></head><body><h1>This exciting offer was created especially for you, our most loyal customer.</h1></body></html>".to_string())
-            },
-            recipients: Recipients {
-                to: Some(vec![
-                    EmailAddress {
-                        email: Some(reply_email_to),
-                        display_name: Some(reply_email_to_display)
-                    },
-                ]),
+                html: Some("<html><head><title>Exciting offer!</title></head><body><h1>This exciting offer was created especially for you, our most loyal customer.</h1></body></html>".to_string()),
+            })
+            .recipients(Recipients {
+                to: Some(vec![EmailAddress {
+                    email: Some(reply_email_to),
+                    display_name: Some(reply_email_to_display),
+                }]),
                 cc: None,
                 b_cc: None,
-            },
-            attachments: None,
-            reply_to: None,
-            //disable_user_engagement_tracking: Some(false),
-            user_engagement_tracking_disabled: Some(false),
-        };
+            })
+            .user_engagement_tracking_disabled(false)
+            .build()
+            .expect("Failed to build SentEmail");
 
         debug!("Email request: {:#?}", email_request);
 
