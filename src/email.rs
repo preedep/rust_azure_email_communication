@@ -1,4 +1,6 @@
-use crate::models::{EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse};
+use crate::models::{
+    EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
+};
 use crate::utils::get_request_header;
 use log::debug;
 use reqwest::{Client, StatusCode};
@@ -20,14 +22,23 @@ where
     let url_endpoint = parse_url(url)?;
     let client = Client::new();
     let json_body = serialize_body(body)?;
-    let headers = create_headers(&url_endpoint, method.as_str(), request_id, &json_body, access_key)?;
+    let headers = create_headers(
+        &url_endpoint,
+        method.as_str(),
+        request_id,
+        &json_body,
+        access_key,
+    )?;
     let request_builder = client.request(method, url).headers(headers);
     let request_builder = if let Some(body) = body {
         request_builder.json(body)
     } else {
         request_builder
     };
-    request_builder.send().await.map_err(|e| to_error_response("Request failed", e))
+    request_builder
+        .send()
+        .await
+        .map_err(|e| to_error_response("Request failed", e))
 }
 
 fn parse_url(url: &str) -> EmailResult<Url> {
@@ -36,7 +47,8 @@ fn parse_url(url: &str) -> EmailResult<Url> {
 
 fn serialize_body<T: serde::Serialize>(body: Option<&T>) -> EmailResult<String> {
     if let Some(body) = body {
-        serde_json::to_string(body).map_err(|e| to_error_response("Failed to serialize request body", e))
+        serde_json::to_string(body)
+            .map_err(|e| to_error_response("Failed to serialize request body", e))
     } else {
         Ok(String::new())
     }
@@ -56,7 +68,7 @@ fn create_headers(
         json_body,
         &access_key.to_string(),
     )
-        .map_err(|e| to_error_response("Header creation failed", e))
+    .map_err(|e| to_error_response("Header creation failed", e))
 }
 
 fn to_error_response(message: &str, error: impl ToString) -> ErrorResponse {
@@ -73,8 +85,12 @@ pub async fn get_email_status(
     access_key: &str,
     request_id: &str,
 ) -> EmailResult<EmailSendStatusType> {
-    let url = format!("https://{}/emails/operations/{}?api-version={}", host_name, request_id, API_VERSION);
-    let response = send_request::<()>(reqwest::Method::GET, &url, access_key, request_id, None).await?;
+    let url = format!(
+        "https://{}/emails/operations/{}?api-version={}",
+        host_name, request_id, API_VERSION
+    );
+    let response =
+        send_request::<()>(reqwest::Method::GET, &url, access_key, request_id, None).await?;
     if response.status() == StatusCode::OK {
         let email_response = parse_response::<SentEmailResponse>(response).await?;
         email_response
@@ -94,14 +110,24 @@ pub async fn send_email(
     email: &SentEmail,
 ) -> EmailResult<String> {
     let url = format!("https://{}/emails:send?api-version={}", host, API_VERSION);
-    let response = send_request(reqwest::Method::POST, &url, access_key, request_id, Some(email)).await?;
+    let response = send_request(
+        reqwest::Method::POST,
+        &url,
+        access_key,
+        request_id,
+        Some(email),
+    )
+    .await?;
     debug!("{:#?}", response);
     handle_response(response).await
 }
 
 async fn handle_response(response: reqwest::Response) -> EmailResult<String> {
     if response.status() == StatusCode::ACCEPTED {
-        parse_response::<SentEmailResponse>(response).await?.id.ok_or_else(create_missing_id_error)
+        parse_response::<SentEmailResponse>(response)
+            .await?
+            .id
+            .ok_or_else(create_missing_id_error)
     } else {
         parse_error_response(response).await
     }
@@ -111,7 +137,10 @@ async fn parse_response<T>(response: reqwest::Response) -> EmailResult<T>
 where
     T: serde::de::DeserializeOwned,
 {
-    response.json::<T>().await.map_err(|e| to_error_response("Failed to parse response", e))
+    response
+        .json::<T>()
+        .await
+        .map_err(|e| to_error_response("Failed to parse response", e))
 }
 
 async fn parse_error_response(response: reqwest::Response) -> EmailResult<String> {

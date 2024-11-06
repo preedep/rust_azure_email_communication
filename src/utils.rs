@@ -1,12 +1,12 @@
+use crate::models::EndPointParams;
+use base64::{engine::general_purpose, Engine as _};
 use hmac::{Hmac, Mac};
 use httpdate::fmt_http_date;
 use log::debug;
 use reqwest::header::HeaderMap;
 use sha2::{Digest, Sha256};
-use base64::{engine::general_purpose, Engine as _};
 use std::time::SystemTime;
 use url::Url;
-use crate::models::EndPointParams;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -43,7 +43,8 @@ pub fn parse_endpoint(endpoint: &str) -> Result<EndPointParams, String> {
 
     for param in parameters {
         if let Some(host) = param.strip_prefix("endpoint=") {
-            let parsed_url = Url::parse(host).map_err(|e| format!("Invalid endpoint URL: {}", e))?;
+            let parsed_url =
+                Url::parse(host).map_err(|e| format!("Invalid endpoint URL: {}", e))?;
             end_point_params.host_name = parsed_url
                 .host_str()
                 .ok_or_else(|| "Missing host in endpoint URL".to_string())?
