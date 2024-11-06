@@ -107,6 +107,7 @@ impl SentEmailBuilder {
         }
     }
 
+    #[allow(dead_code)]
     pub fn headers(mut self, headers: Vec<Header>) -> Self {
         self.headers = Some(headers);
         self
@@ -127,11 +128,13 @@ impl SentEmailBuilder {
         self
     }
 
+    #[allow(dead_code)]
     pub fn attachments(mut self, attachments: Vec<EmailAttachment>) -> Self {
         self.attachments = Some(attachments);
         self
     }
 
+    #[allow(dead_code)]
     pub fn reply_to(mut self, reply_to: Vec<EmailAddress>) -> Self {
         self.reply_to = Some(reply_to);
         self
