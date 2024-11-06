@@ -1,4 +1,6 @@
-use crate::models::{EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse};
+use crate::models::{
+    EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
+};
 use crate::utils::get_request_header;
 use log::debug;
 use reqwest::{Client, StatusCode};
@@ -42,12 +44,12 @@ where
         &json_body,
         &access_key.to_string(),
     )
-        .map_err(|e| ErrorResponse {
-            error: Some(ErrorDetail {
-                message: Some(format!("Header creation failed: {}", e)),
-                ..Default::default()
-            }),
-        })?;
+    .map_err(|e| ErrorResponse {
+        error: Some(ErrorDetail {
+            message: Some(format!("Header creation failed: {}", e)),
+            ..Default::default()
+        }),
+    })?;
 
     let request_builder = client.request(method, url).headers(headers);
     let request_builder = if let Some(body) = body {
@@ -56,15 +58,12 @@ where
         request_builder
     };
 
-    request_builder
-        .send()
-        .await
-        .map_err(|e| ErrorResponse {
-            error: Some(ErrorDetail {
-                message: Some(format!("Request failed: {}", e)),
-                ..Default::default()
-            }),
-        })
+    request_builder.send().await.map_err(|e| ErrorResponse {
+        error: Some(ErrorDetail {
+            message: Some(format!("Request failed: {}", e)),
+            ..Default::default()
+        }),
+    })
 }
 
 pub async fn get_email_status(
@@ -77,7 +76,8 @@ pub async fn get_email_status(
         host_name, request_id,
     );
 
-    let response = send_request::<()>(reqwest::Method::GET, &url, access_key, request_id, None).await?;
+    let response =
+        send_request::<()>(reqwest::Method::GET, &url, access_key, request_id, None).await?;
 
     if response.status() == StatusCode::OK {
         let email_resp = response
@@ -125,8 +125,14 @@ pub async fn send_email(
         host_name
     );
 
-    let response = send_request(reqwest::Method::POST, &url, access_key, request_id, Some(request_email))
-        .await?;
+    let response = send_request(
+        reqwest::Method::POST,
+        &url,
+        access_key,
+        request_id,
+        Some(request_email),
+    )
+    .await?;
 
     debug!("{:#?}", response);
     if response.status() == StatusCode::ACCEPTED {
@@ -139,17 +145,14 @@ pub async fn send_email(
                     ..Default::default()
                 }),
             })?;
-        email_resp
-            .id
-            .map(Ok)
-            .unwrap_or_else(|| {
-                Err(ErrorResponse {
-                    error: Some(ErrorDetail {
-                        message: Some("Missing ID in response".to_string()),
-                        ..Default::default()
-                    }),
-                })
+        email_resp.id.map(Ok).unwrap_or_else(|| {
+            Err(ErrorResponse {
+                error: Some(ErrorDetail {
+                    message: Some("Missing ID in response".to_string()),
+                    ..Default::default()
+                }),
             })
+        })
     } else {
         let error_resp = response
             .json::<ErrorResponse>()

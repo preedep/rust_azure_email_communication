@@ -53,7 +53,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         debug!("Email request: {:#?}", email_request);
 
-
         let resp_send_email = send_email(
             &host_name.to_string(),
             &access_key.to_string(),

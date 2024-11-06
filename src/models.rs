@@ -31,7 +31,7 @@ pub struct SentEmailResponse {
     pub(crate) error: Option<ErrorDetail>,
 }
 
-#[derive(Serialize, Deserialize, Debug,Default)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ErrorDetail {
     #[serde(rename = "additionalInfo")]
     pub(crate) additional_info: Option<Vec<ErrorAdditionalInfo>>,
@@ -59,7 +59,7 @@ pub struct ErrorAdditionalInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SentEmail {
-    #[serde(rename = "headers",skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "headers", skip_serializing_if = "Option::is_none")]
     pub(crate) headers: Option<Vec<Header>>,
 
     #[serde(rename = "senderAddress")]
@@ -71,13 +71,16 @@ pub struct SentEmail {
     #[serde(rename = "recipients")]
     pub(crate) recipients: Recipients,
 
-    #[serde(rename = "attachments",skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "attachments", skip_serializing_if = "Option::is_none")]
     pub(crate) attachments: Option<Vec<EmailAttachment>>,
 
-    #[serde(rename = "replyTo",skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "replyTo", skip_serializing_if = "Option::is_none")]
     pub(crate) reply_to: Option<Vec<EmailAddress>>,
 
-    #[serde(rename = "userEngagementTrackingDisabled",skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "userEngagementTrackingDisabled",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub(crate) user_engagement_tracking_disabled: Option<bool>,
 }
 
