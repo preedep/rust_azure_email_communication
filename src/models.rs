@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::{Formatter};
+use std::fmt::Formatter;
 use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct  EmailSendStatus(EmailSendStatusType);
+pub struct EmailSendStatus(EmailSendStatusType);
 impl EmailSendStatus {
     pub fn to_type(self) -> EmailSendStatusType {
         self.0
@@ -17,7 +17,7 @@ pub enum EmailSendStatusType {
     Failed,
     NotStarted,
     Running,
-    Succeeded
+    Succeeded,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SentEmailResponse {
@@ -28,20 +28,19 @@ pub struct SentEmailResponse {
     pub(crate) status: Option<EmailSendStatus>,
 
     #[serde(rename = "error")]
-    pub(crate) error: Option<ErrorDetail>
+    pub(crate) error: Option<ErrorDetail>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ErrorDetail {
     #[serde(rename = "additionalInfo")]
     pub(crate) additional_info: Option<Vec<ErrorAdditionalInfo>>,
 
-     #[serde(rename = "code")]
+    #[serde(rename = "code")]
     pub(crate) code: Option<String>,
 
-   // #[serde(rename = "details")]
-   // pub(crate) details: Option<ErrorDetail>,
-
+    // #[serde(rename = "details")]
+    // pub(crate) details: Option<ErrorDetail>,
     #[serde(rename = "message")]
     pub(crate) message: Option<String>,
 
@@ -60,25 +59,28 @@ pub struct ErrorAdditionalInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SentEmail {
-    #[serde(rename = "headers")]
+    #[serde(rename = "headers", skip_serializing_if = "Option::is_none")]
     pub(crate) headers: Option<Vec<Header>>,
 
     #[serde(rename = "senderAddress")]
-    pub(crate) sender: Option<String>,
+    pub(crate) sender: String,
 
     #[serde(rename = "content")]
-    pub(crate) content: Option<EmailContent>,
+    pub(crate) content: EmailContent,
 
     #[serde(rename = "recipients")]
-    pub(crate) recipients: Option<Recipients>,
+    pub(crate) recipients: Recipients,
 
-    #[serde(rename = "attachments")]
+    #[serde(rename = "attachments", skip_serializing_if = "Option::is_none")]
     pub(crate) attachments: Option<Vec<EmailAttachment>>,
 
-    #[serde(rename = "replyTo")]
+    #[serde(rename = "replyTo", skip_serializing_if = "Option::is_none")]
     pub(crate) reply_to: Option<Vec<EmailAddress>>,
 
-    #[serde(rename = "userEngagementTrackingDisabled")]
+    #[serde(
+        rename = "userEngagementTrackingDisabled",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub(crate) user_engagement_tracking_disabled: Option<bool>,
 }
 
@@ -135,7 +137,6 @@ pub struct EmailAddress {
     pub(crate) display_name: Option<String>,
 }
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorResponse {
     #[serde(rename = "error")]
@@ -155,8 +156,8 @@ impl fmt::Display for EmailSendStatusType {
             EmailSendStatusType::Failed => write!(f, "Failed"),
             EmailSendStatusType::NotStarted => write!(f, "NotStarted"),
             EmailSendStatusType::Running => write!(f, "Running"),
-            EmailSendStatusType::Succeeded => write!(f,"Succeeded"),
-            _ => write!(f,"Unknown")
+            EmailSendStatusType::Succeeded => write!(f, "Succeeded"),
+            _ => write!(f, "Unknown"),
         }
     }
 }
@@ -178,7 +179,7 @@ impl FromStr for EmailSendStatusType {
 
 impl fmt::Display for EmailSendStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f,"{}",self.0).expect("EmailSendStatus: panic message");
+        write!(f, "{}", self.0).expect("EmailSendStatus: panic message");
         Ok(())
     }
 }
