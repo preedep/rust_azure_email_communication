@@ -1,12 +1,11 @@
-use crate::models::{
-    EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
-};
+use crate::models::{EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse};
 use crate::utils::get_request_header;
 use log::debug;
 use reqwest::{Client, StatusCode};
 use url::Url;
 
 type EmailResult<T> = Result<T, ErrorResponse>;
+const API_VERSION: &str = "2023-01-15-preview";
 
 async fn send_request<T>(
     method: reqwest::Method,
@@ -18,52 +17,55 @@ async fn send_request<T>(
 where
     T: serde::Serialize,
 {
-    let url_endpoint = Url::parse(url).map_err(|e| ErrorResponse {
-        error: Some(ErrorDetail {
-            message: Some(format!("Invalid URL: {}", e)),
-            ..Default::default()
-        }),
-    })?;
-
+    let url_endpoint = parse_url(url)?;
     let client = Client::new();
-    let json_body = if let Some(body) = body {
-        serde_json::to_string(body).map_err(|e| ErrorResponse {
-            error: Some(ErrorDetail {
-                message: Some(format!("Failed to serialize request body: {}", e)),
-                ..Default::default()
-            }),
-        })?
-    } else {
-        String::new()
-    };
-
-    let headers = get_request_header(
-        &url_endpoint,
-        method.as_str(),
-        &request_id.to_string(),
-        &json_body,
-        &access_key.to_string(),
-    )
-    .map_err(|e| ErrorResponse {
-        error: Some(ErrorDetail {
-            message: Some(format!("Header creation failed: {}", e)),
-            ..Default::default()
-        }),
-    })?;
-
+    let json_body = serialize_body(body)?;
+    let headers = create_headers(&url_endpoint, method.as_str(), request_id, &json_body, access_key)?;
     let request_builder = client.request(method, url).headers(headers);
     let request_builder = if let Some(body) = body {
         request_builder.json(body)
     } else {
         request_builder
     };
+    request_builder.send().await.map_err(|e| to_error_response("Request failed", e))
+}
 
-    request_builder.send().await.map_err(|e| ErrorResponse {
+fn parse_url(url: &str) -> EmailResult<Url> {
+    Url::parse(url).map_err(|e| to_error_response("Invalid URL", e))
+}
+
+fn serialize_body<T: serde::Serialize>(body: Option<&T>) -> EmailResult<String> {
+    if let Some(body) = body {
+        serde_json::to_string(body).map_err(|e| to_error_response("Failed to serialize request body", e))
+    } else {
+        Ok(String::new())
+    }
+}
+
+fn create_headers(
+    url_endpoint: &Url,
+    method: &str,
+    request_id: &str,
+    json_body: &str,
+    access_key: &str,
+) -> EmailResult<reqwest::header::HeaderMap> {
+    get_request_header(
+        url_endpoint,
+        method,
+        &request_id.to_string(),
+        json_body,
+        &access_key.to_string(),
+    )
+        .map_err(|e| to_error_response("Header creation failed", e))
+}
+
+fn to_error_response(message: &str, error: impl ToString) -> ErrorResponse {
+    ErrorResponse {
         error: Some(ErrorDetail {
-            message: Some(format!("Request failed: {}", e)),
+            message: Some(format!("{}: {}", message, error.to_string())),
             ..Default::default()
         }),
-    })
+    }
 }
 
 pub async fn get_email_status(
@@ -71,98 +73,56 @@ pub async fn get_email_status(
     access_key: &str,
     request_id: &str,
 ) -> EmailResult<EmailSendStatusType> {
-    let url = format!(
-        "https://{}/emails/operations/{}?api-version=2023-01-15-preview",
-        host_name, request_id,
-    );
-
-    let response =
-        send_request::<()>(reqwest::Method::GET, &url, access_key, request_id, None).await?;
-
+    let url = format!("https://{}/emails/operations/{}?api-version={}", host_name, request_id, API_VERSION);
+    let response = send_request::<()>(reqwest::Method::GET, &url, access_key, request_id, None).await?;
     if response.status() == StatusCode::OK {
-        let email_resp = response
-            .json::<SentEmailResponse>()
-            .await
-            .map_err(|e| ErrorResponse {
-                error: Some(ErrorDetail {
-                    message: Some(format!("Failed to parse response: {}", e)),
-                    ..Default::default()
-                }),
-            })?;
-        email_resp
+        let email_response = parse_response::<SentEmailResponse>(response).await?;
+        email_response
             .status
             .map(|status| Ok(status.to_type()))
-            .unwrap_or_else(|| {
-                Err(ErrorResponse {
-                    error: Some(ErrorDetail {
-                        message: Some("Missing status in response".to_string()),
-                        ..Default::default()
-                    }),
-                })
-            })
+            .unwrap_or_else(|| Err(create_missing_status_error()))
     } else {
-        let error_resp = response
-            .json::<ErrorResponse>()
-            .await
-            .map_err(|e| ErrorResponse {
-                error: Some(ErrorDetail {
-                    message: Some(format!("Failed to parse error response: {}", e)),
-                    ..Default::default()
-                }),
-            })?;
-        Err(error_resp)
+        let error_response = parse_response::<ErrorResponse>(response).await?;
+        Err(error_response)
     }
 }
 
 pub async fn send_email(
-    host_name: &str,
+    host: &str,
     access_key: &str,
     request_id: &str,
-    request_email: &SentEmail,
+    email: &SentEmail,
 ) -> EmailResult<String> {
-    let url = format!(
-        "https://{}/emails:send?api-version=2023-01-15-preview",
-        host_name
-    );
-
-    let response = send_request(
-        reqwest::Method::POST,
-        &url,
-        access_key,
-        request_id,
-        Some(request_email),
-    )
-    .await?;
-
+    let url = format!("https://{}/emails:send?api-version={}", host, API_VERSION);
+    let response = send_request(reqwest::Method::POST, &url, access_key, request_id, Some(email)).await?;
     debug!("{:#?}", response);
+    handle_response(response).await
+}
+
+async fn handle_response(response: reqwest::Response) -> EmailResult<String> {
     if response.status() == StatusCode::ACCEPTED {
-        let email_resp = response
-            .json::<SentEmailResponse>()
-            .await
-            .map_err(|e| ErrorResponse {
-                error: Some(ErrorDetail {
-                    message: Some(format!("Failed to parse response: {}", e)),
-                    ..Default::default()
-                }),
-            })?;
-        email_resp.id.map(Ok).unwrap_or_else(|| {
-            Err(ErrorResponse {
-                error: Some(ErrorDetail {
-                    message: Some("Missing ID in response".to_string()),
-                    ..Default::default()
-                }),
-            })
-        })
+        parse_response::<SentEmailResponse>(response).await?.id.ok_or_else(create_missing_id_error)
     } else {
-        let error_resp = response
-            .json::<ErrorResponse>()
-            .await
-            .map_err(|e| ErrorResponse {
-                error: Some(ErrorDetail {
-                    message: Some(format!("Failed to parse error response: {}", e)),
-                    ..Default::default()
-                }),
-            })?;
-        Err(error_resp)
+        parse_error_response(response).await
     }
+}
+
+async fn parse_response<T>(response: reqwest::Response) -> EmailResult<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    response.json::<T>().await.map_err(|e| to_error_response("Failed to parse response", e))
+}
+
+async fn parse_error_response(response: reqwest::Response) -> EmailResult<String> {
+    let error_response = parse_response::<ErrorResponse>(response).await?;
+    Err(error_response)
+}
+
+fn create_missing_status_error() -> ErrorResponse {
+    to_error_response("Missing status in response", "")
+}
+
+fn create_missing_id_error() -> ErrorResponse {
+    to_error_response("Missing ID in response", "")
 }
