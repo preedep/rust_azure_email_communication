@@ -1,5 +1,7 @@
 use crate::email::{get_email_status, send_email};
-use crate::models::{EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmail, SentEmailBuilder};
+use crate::models::{
+    EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmail, SentEmailBuilder,
+};
 use crate::utils::parse_endpoint;
 use log::{debug, error, info};
 use std::thread::sleep;
