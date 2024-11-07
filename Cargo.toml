@@ -22,7 +22,7 @@ base64 = "0.22"
 url = "2.3"
 substring = "1.4.5"
 
-# openssl = {version = "0.10", features = ["vendored"]}
+openssl = {version = "0.10", features = ["vendored"]}
 
 
 [profile.release]
