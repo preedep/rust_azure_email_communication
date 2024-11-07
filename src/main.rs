@@ -61,8 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(message_resp_id) => {
                 info!("email was sent with message id : {}", message_resp_id);
                 loop {
-                    tokio::time::sleep(time::Duration::from_secs(1)).await;
-
+                    tokio::time::sleep(time::Duration::from_secs(5)).await;
                     let resp_status = get_email_status(
                         &host_name.to_string(),
                         &access_key.to_string(),
