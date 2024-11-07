@@ -1,0 +1,1 @@
+docker run -e RUST_LOG=debug --env-file .env azure_email_service
