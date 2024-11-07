@@ -9,3 +9,5 @@ Cargo.lock
 .idea/vcs.xml
 run.json
 /.idea/material_theme_project_new.xml
+/.idea/developer-tools.xml
+/.idea/misc.xml
