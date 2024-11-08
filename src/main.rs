@@ -50,10 +50,13 @@ async fn send_email_with_smtp(){
         .unwrap();
 
 
+    debug!("Email: {:#?}", email);
+
     let creds = Credentials::new(smtp_user, smtp_password);
 
     // Open a remote connection to gmail
-    let mailer = SmtpTransport::relay(smtp_server.as_str())
+
+    let mailer = SmtpTransport::starttls_relay(smtp_server.as_str())
         .unwrap()
         .credentials(creds)
         .build();
