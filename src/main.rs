@@ -11,12 +11,8 @@ mod email;
 mod models;
 mod utils;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    pretty_env_logger::init();
 
-    dotenv::dotenv().ok();
-
+async fn send_email_with_api(){
     let connection_str = env::var("CONNECTION_STR").unwrap();
     let sender = env::var("SENDER").unwrap();
     let reply_email_to = env::var("REPLY_EMAIL").unwrap();
@@ -55,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             &request_id,
             &email_request,
         )
-        .await;
+            .await;
 
         match resp_send_email {
             Ok(message_resp_id) => {
@@ -67,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &access_key.to_string(),
                         &message_resp_id,
                     )
-                    .await;
+                        .await;
                     if let Ok(status) = resp_status {
                         //let status = status.status.unwrap();
                         info!("{}\r\n", status.to_string());
@@ -98,6 +94,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 error!("Error sending email: {:?}", e);
             }
         }
+    } else {
+        error!("Error parsing endpoint: {:?}", res_parse_endpoint);
     }
+}
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    pretty_env_logger::init();
+
+    dotenv::dotenv().ok();
+
+    send_email_with_api().await;
+
     Ok(())
 }
