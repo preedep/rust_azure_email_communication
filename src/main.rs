@@ -11,7 +11,7 @@ mod email;
 mod models;
 mod utils;
 
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser,ValueEnum};
 use lettre::{Message, SmtpTransport, Transport};
 use lettre::message::header::ContentType;
 use lettre::transport::smtp::authentication::Credentials;
