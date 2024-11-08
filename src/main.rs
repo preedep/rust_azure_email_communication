@@ -31,6 +31,9 @@ struct Cli {
     #[arg(value_enum, short, long, default_value = "REST")]
     protocol: ACSProtocol,
 }
+/// Send email using SMTP
+/// This function sends an email using SMTP
+/// The sender, reply email, smtp server, smtp user and smtp password are read from the environment variables
 async fn send_email_with_smtp(){
 
     let sender = env::var("SENDER").unwrap();
@@ -67,6 +70,9 @@ async fn send_email_with_smtp(){
         Err(e) => error!("Could not send email: {e:?}"),
     }
 }
+/// Send email using REST API
+/// This function sends an email using the REST API
+/// The sender, reply email, connection string, access key and host name are read from the environment variables
 async fn send_email_with_api(){
     let connection_str = env::var("CONNECTION_STR").unwrap();
     let sender = env::var("SENDER").unwrap();
