@@ -11,6 +11,24 @@ mod email;
 mod models;
 mod utils;
 
+use clap::{Parser, Subcommand, ValueEnum};
+
+
+#[derive(Debug,Clone,ValueEnum)]
+enum ACSProtocol {
+    REST,
+    SMTP
+}
+
+
+
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    /// The protocol to use for sending the email (REST or SMTP) (default: REST)
+    #[arg(value_enum, short, long, default_value = "REST")]
+    protocol: ACSProtocol,
+}
 
 async fn send_email_with_api(){
     let connection_str = env::var("CONNECTION_STR").unwrap();
@@ -104,7 +122,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     dotenv::dotenv().ok();
 
-    send_email_with_api().await;
+    let args = Cli::parse();
+    match args.protocol {
+        ACSProtocol::REST => {
+            info!("Sending email using REST API");
+            send_email_with_api().await;
+        }
+        ACSProtocol::SMTP => {
+            info!("Sending email using SMTP");
+        }
+    }
+
 
     Ok(())
 }
