@@ -11,12 +11,63 @@ mod email;
 mod models;
 mod utils;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    pretty_env_logger::init();
+use clap::{Parser, Subcommand, ValueEnum};
+use lettre::{Message, SmtpTransport, Transport};
+use lettre::message::header::ContentType;
+use lettre::transport::smtp::authentication::Credentials;
 
-    dotenv::dotenv().ok();
+#[derive(Debug,Clone,ValueEnum)]
+enum ACSProtocol {
+    REST,
+    SMTP
+}
 
+
+
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    /// The protocol to use for sending the email (REST or SMTP) (default: REST)
+    #[arg(value_enum, short, long, default_value = "REST")]
+    protocol: ACSProtocol,
+}
+async fn send_email_with_smtp(){
+
+    let sender = env::var("SENDER").unwrap();
+    let reply_email_to = env::var("REPLY_EMAIL").unwrap();
+
+    let smtp_server = env::var("SMTP_SERVER").unwrap();
+    let smtp_user = env::var("SMTP_USER").unwrap();
+    let smtp_password = env::var("SMTP_PASSWORD").unwrap();
+
+    let email = Message::builder()
+        .from(sender.parse().unwrap())
+        //.reply_to(reply_email_to.parse().unwrap())
+        .to(reply_email_to.parse().unwrap())
+        .subject("Happy new year")
+        .header(ContentType::TEXT_PLAIN)
+        .body(String::from("Be happy!"))
+        .unwrap();
+
+
+    debug!("Email: {:#?}", email);
+
+    let creds = Credentials::new(smtp_user, smtp_password);
+
+    // Open a remote connection to gmail
+
+    let mailer = SmtpTransport::starttls_relay(smtp_server.as_str())
+        .unwrap()
+        .credentials(creds)
+        .build();
+
+    // Send the email
+    match mailer.send(&email) {
+        Ok(_) => info!("Email sent successfully!"),
+        Err(e) => error!("Could not send email: {e:?}"),
+    }
+}
+async fn send_email_with_api(){
     let connection_str = env::var("CONNECTION_STR").unwrap();
     let sender = env::var("SENDER").unwrap();
     let reply_email_to = env::var("REPLY_EMAIL").unwrap();
@@ -55,20 +106,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             &request_id,
             &email_request,
         )
-        .await;
+            .await;
 
         match resp_send_email {
             Ok(message_resp_id) => {
                 info!("email was sent with message id : {}", message_resp_id);
                 loop {
-                    tokio::time::sleep(time::Duration::from_secs(1)).await;
-
+                    tokio::time::sleep(time::Duration::from_secs(5)).await;
                     let resp_status = get_email_status(
                         &host_name.to_string(),
                         &access_key.to_string(),
                         &message_resp_id,
                     )
-                    .await;
+                        .await;
                     if let Ok(status) = resp_status {
                         //let status = status.status.unwrap();
                         info!("{}\r\n", status.to_string());
@@ -99,6 +149,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 error!("Error sending email: {:?}", e);
             }
         }
+    } else {
+        error!("Error parsing endpoint: {:?}", res_parse_endpoint);
     }
+}
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    pretty_env_logger::init();
+
+    dotenv::dotenv().ok();
+
+    let args = Cli::parse();
+    match args.protocol {
+        ACSProtocol::REST => {
+            info!("Sending email using REST API");
+            send_email_with_api().await;
+        }
+        ACSProtocol::SMTP => {
+            info!("Sending email using SMTP");
+            send_email_with_smtp().await;
+        }
+    }
+
+
     Ok(())
 }
