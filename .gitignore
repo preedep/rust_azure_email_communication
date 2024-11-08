@@ -1,4 +1,3 @@
-run.sh
 target/
 Cargo.lock
 .env
