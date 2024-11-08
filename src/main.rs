@@ -1,6 +1,6 @@
 use crate::email::{get_email_status, send_email};
 use crate::models::{
-    EmailAddress, EmailContent, EmailSendStatusType, Recipients,  SentEmailBuilder,
+    EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmailBuilder,
 };
 use crate::utils::parse_endpoint;
 use log::{debug, error, info};
@@ -11,18 +11,16 @@ mod email;
 mod models;
 mod utils;
 
-use clap::{Parser,ValueEnum};
-use lettre::{Message, SmtpTransport, Transport};
+use clap::{Parser, ValueEnum};
 use lettre::message::header::ContentType;
 use lettre::transport::smtp::authentication::Credentials;
+use lettre::{Message, SmtpTransport, Transport};
 
-#[derive(Debug,Clone,ValueEnum)]
+#[derive(Debug, Clone, ValueEnum)]
 enum ACSProtocol {
     REST,
-    SMTP
+    SMTP,
 }
-
-
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -34,8 +32,7 @@ struct Cli {
 /// Send email using SMTP
 /// This function sends an email using SMTP
 /// The sender, reply email, smtp server, smtp user and smtp password are read from the environment variables
-async fn send_email_with_smtp(){
-
+async fn send_email_with_smtp() {
     let sender = env::var("SENDER").unwrap();
     let reply_email_to = env::var("REPLY_EMAIL").unwrap();
 
@@ -51,7 +48,6 @@ async fn send_email_with_smtp(){
         .header(ContentType::TEXT_PLAIN)
         .body(String::from("Be happy!"))
         .unwrap();
-
 
     debug!("Email: {:#?}", email);
 
@@ -73,7 +69,7 @@ async fn send_email_with_smtp(){
 /// Send email using REST API
 /// This function sends an email using the REST API
 /// The sender, reply email, connection string, access key and host name are read from the environment variables
-async fn send_email_with_api(){
+async fn send_email_with_api() {
     let connection_str = env::var("CONNECTION_STR").unwrap();
     let sender = env::var("SENDER").unwrap();
     let reply_email_to = env::var("REPLY_EMAIL").unwrap();
@@ -112,7 +108,7 @@ async fn send_email_with_api(){
             &request_id,
             &email_request,
         )
-            .await;
+        .await;
 
         match resp_send_email {
             Ok(message_resp_id) => {
@@ -124,7 +120,7 @@ async fn send_email_with_api(){
                         &access_key.to_string(),
                         &message_resp_id,
                     )
-                        .await;
+                    .await;
                     if let Ok(status) = resp_status {
                         //let status = status.status.unwrap();
                         info!("{}\r\n", status.to_string());
@@ -176,7 +172,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             send_email_with_smtp().await;
         }
     }
-
 
     Ok(())
 }
