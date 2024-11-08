@@ -12,7 +12,8 @@ mod models;
 mod utils;
 
 use clap::{Parser, Subcommand, ValueEnum};
-
+use lettre::Message;
+use lettre::message::header::ContentType;
 
 #[derive(Debug,Clone,ValueEnum)]
 enum ACSProtocol {
@@ -29,7 +30,16 @@ struct Cli {
     #[arg(value_enum, short, long, default_value = "REST")]
     protocol: ACSProtocol,
 }
-
+async fn send_email_with_smtp(){
+    let email = Message::builder()
+        .from("NoBody <nobody@domain.tld>".parse().unwrap())
+        .reply_to("Yuin <yuin@domain.tld>".parse().unwrap())
+        .to("Hei <hei@domain.tld>".parse().unwrap())
+        .subject("Happy new year")
+        .header(ContentType::TEXT_PLAIN)
+        .body(String::from("Be happy!"))
+        .unwrap();
+}
 async fn send_email_with_api(){
     let connection_str = env::var("CONNECTION_STR").unwrap();
     let sender = env::var("SENDER").unwrap();
@@ -130,6 +140,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         ACSProtocol::SMTP => {
             info!("Sending email using SMTP");
+            send_email_with_smtp().await;
         }
     }
 
