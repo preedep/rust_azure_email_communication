@@ -32,14 +32,13 @@ struct Cli {
 /// Send email using SMTP
 /// This function sends an email using SMTP
 /// The sender, reply email, smtp server, smtp user and smtp password are read from the environment variables
-async fn send_email_with_smtp() {
-    let sender = env::var("SENDER").unwrap();
-    let reply_email_to = env::var("REPLY_EMAIL").unwrap();
-
-    let smtp_server = env::var("SMTP_SERVER").unwrap();
-    let smtp_user = env::var("SMTP_USER").unwrap();
-    let smtp_password = env::var("SMTP_PASSWORD").unwrap();
-
+async fn send_email_with_smtp(
+    sender: &str,
+    reply_email_to: &str,
+    smtp_server: &str,
+    smtp_user: &str,
+    smtp_password: &str,
+) {
     let email = Message::builder()
         .from(sender.parse().unwrap())
         //.reply_to(reply_email_to.parse().unwrap())
@@ -51,11 +50,11 @@ async fn send_email_with_smtp() {
 
     debug!("Email: {:#?}", email);
 
-    let creds = Credentials::new(smtp_user, smtp_password);
+    let creds = Credentials::new(smtp_user.to_owned(), smtp_password.to_owned());
 
     // Open a remote connection to gmail
 
-    let mailer = SmtpTransport::starttls_relay(smtp_server.as_str())
+    let mailer = SmtpTransport::starttls_relay(smtp_server)
         .unwrap()
         .credentials(creds)
         .build();
@@ -69,12 +68,12 @@ async fn send_email_with_smtp() {
 /// Send email using REST API
 /// This function sends an email using the REST API
 /// The sender, reply email, connection string, access key and host name are read from the environment variables
-async fn send_email_with_api() {
-    let connection_str = env::var("CONNECTION_STR").unwrap();
-    let sender = env::var("SENDER").unwrap();
-    let reply_email_to = env::var("REPLY_EMAIL").unwrap();
-    let reply_email_to_display = env::var("REPLY_EMAIL_DISPLAY").unwrap();
-
+async fn send_email_with_api(
+    connection_str: &str,
+    sender: &str,
+    reply_email_to: &str,
+    reply_email_to_display: &str,
+) {
     let res_parse_endpoint = parse_endpoint(&connection_str);
     if let Ok(endpoint) = res_parse_endpoint {
         let request_id = format!("{}", Uuid::new_v4());
@@ -82,7 +81,7 @@ async fn send_email_with_api() {
         let host_name = endpoint.host_name;
 
         let email_request = SentEmailBuilder::new()
-            .sender(sender)
+            .sender(sender.to_owned())
             .content(EmailContent {
                 subject: Some("An exciting offer especially for you!".to_string()),
                 plain_text: Some("This exciting offer was created especially for you, our most loyal customer.".to_string()),
@@ -90,8 +89,8 @@ async fn send_email_with_api() {
             })
             .recipients(Recipients {
                 to: Some(vec![EmailAddress {
-                    email: Some(reply_email_to),
-                    display_name: Some(reply_email_to_display),
+                    email: Some(reply_email_to.to_owned()),
+                    display_name: Some(reply_email_to_display.to_owned()),
                 }]),
                 cc: None,
                 b_cc: None,
@@ -165,11 +164,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match args.protocol {
         ACSProtocol::REST => {
             info!("Sending email using REST API");
-            send_email_with_api().await;
+
+            let connection_str = env::var("CONNECTION_STR").unwrap();
+            let sender = env::var("SENDER").unwrap();
+            let reply_email_to = env::var("REPLY_EMAIL").unwrap();
+            let reply_email_to_display = env::var("REPLY_EMAIL_DISPLAY").unwrap();
+
+            send_email_with_api(
+                connection_str.as_str(),
+                sender.as_str(),
+                reply_email_to.as_str(),
+                reply_email_to_display.as_str(),
+            )
+            .await;
         }
         ACSProtocol::SMTP => {
             info!("Sending email using SMTP");
-            send_email_with_smtp().await;
+            let sender = env::var("SENDER").unwrap();
+            let reply_email_to = env::var("REPLY_EMAIL").unwrap();
+
+            let smtp_server = env::var("SMTP_SERVER").unwrap();
+            let smtp_user = env::var("SMTP_USER").unwrap();
+            let smtp_password = env::var("SMTP_PASSWORD").unwrap();
+
+            send_email_with_smtp(
+                sender.as_str(),
+                reply_email_to.as_str(),
+                smtp_server.as_str(),
+                smtp_user.as_str(),
+                smtp_password.as_str(),
+            )
+            .await;
         }
     }
 
