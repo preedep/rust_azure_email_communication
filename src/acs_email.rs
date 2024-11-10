@@ -1,11 +1,14 @@
-use std::sync::Arc;
-use azure_core::auth::TokenCredential;
-use azure_core::HttpClient;
 use crate::models::{
     EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
 };
 use crate::utils::{get_request_header, parse_endpoint};
-use azure_identity::{create_credential, create_default_credential, ClientSecretCredential, DefaultAzureCredential, DefaultAzureCredentialBuilder};
+use azure_core::auth::TokenCredential;
+use azure_core::HttpClient;
+use azure_identity::{
+    create_credential, create_default_credential, ClientSecretCredential, DefaultAzureCredential,
+    DefaultAzureCredentialBuilder,
+};
+use std::sync::Arc;
 
 use log::debug;
 use openssl::ssl::ConnectConfiguration;
@@ -179,11 +182,13 @@ async fn get_access_token(auth_method: &ACSAuthMethod) -> Result<String, String>
                 client_id.to_string(),
                 client_secret.to_string(),
             );
-            let token = credential.get_token(&["https://communication.azure.com/.default"]).await
+            let token = credential
+                .get_token(&["https://communication.azure.com/.default"])
+                .await
                 .map_err(|e| format!("Failed to get access token: {}", e))?;
-           return Ok(token.token.secret().to_owned());
+            return Ok(token.token.secret().to_owned());
         }
-        ACSAuthMethod::ManagedIdentity => {},
+        ACSAuthMethod::ManagedIdentity => {}
         _ => {}
     }
     Ok("".to_string())
