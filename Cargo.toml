@@ -25,7 +25,9 @@ substring = "1.4.5"
 lettre = { version = "0.11" ,default-features = false, features = ["builder","hostname","rustls-tls","pool","smtp-transport"]}
 
 azure_core = {version = "0.21"}
-azure_identity = {version = "0.21",default-features = false, features = ["tz-rs","enable_reqwest_rustls"]}
+azure_identity = {version = "0.21",default-features = false, features = ["development",
+    "tz-rs",
+    "enable_reqwest_rustls"]}
 
 
 openssl = {version = "0.10", features = ["vendored"]}

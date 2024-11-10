@@ -1,7 +1,11 @@
+use std::sync::Arc;
+use azure_core::auth::TokenCredential;
+use azure_core::HttpClient;
 use crate::models::{
     EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
 };
 use crate::utils::{get_request_header, parse_endpoint};
+use azure_identity::{create_credential, create_default_credential, ClientSecretCredential, DefaultAzureCredential, DefaultAzureCredentialBuilder};
 
 use log::debug;
 use openssl::ssl::ConnectConfiguration;
@@ -148,6 +152,41 @@ fn serialize_body<T: serde::Serialize>(body: Option<&T>) -> EmailResult<String> 
     } else {
         Ok(String::new())
     }
+}
+// Adding a function to create a `HttpClient`
+fn create_http_client() -> Arc<dyn HttpClient> {
+    // Assuming `reqwest` is used as the HTTP client
+    Arc::new(Client::new()) as Arc<dyn HttpClient>
+}
+
+async fn get_access_token(auth_method: &ACSAuthMethod) -> Result<String, String> {
+    match auth_method {
+        ACSAuthMethod::ServicePrincipal {
+            tenant_id,
+            client_id,
+            client_secret,
+        } => {
+            // Use Azure AD client credential flow (requires async-http-client support)
+            let http_client = create_http_client();
+            let token_url = format!(
+                "https://login.microsoftonline.com/{}/oauth2/v2.0/token",
+                tenant_id
+            );
+            let credential = ClientSecretCredential::new(
+                http_client,
+                Url::parse(&token_url).unwrap(),
+                tenant_id.to_string(),
+                client_id.to_string(),
+                client_secret.to_string(),
+            );
+            let token = credential.get_token(&["https://communication.azure.com/.default"]).await
+                .map_err(|e| format!("Failed to get access token: {}", e))?;
+           return Ok(token.token.secret().to_owned());
+        }
+        ACSAuthMethod::ManagedIdentity => {},
+        _ => {}
+    }
+    Ok("".to_string())
 }
 
 fn create_headers(
