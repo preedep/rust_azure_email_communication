@@ -11,12 +11,19 @@ type EmailResult<T> = Result<T, ErrorResponse>;
 const API_VERSION: &str = "2023-01-15-preview";
 
 
-
 // Define the AuthenticationMethod enum
 #[derive(Debug, Clone, ValueEnum)]
 pub enum AuthenticationMethod {
     ManagedIdentity,
+    // Define the ServicePrincipal enum
+    // This enum is used to specify the authentication method when using a service principal
+    // ClientId: The client ID of the service principal
+    // ClientSecret: The client secret of the service principal
+    // TenantId: The tenant ID of the service principal
     ServicePrincipal,
+    // Define the SharedKey enum
+    // This enum is used to specify the authentication method when using a shared key
+    // SharedKey: The shared key
     SharedKey,
 }
 
