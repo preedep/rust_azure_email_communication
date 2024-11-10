@@ -1,4 +1,4 @@
-use crate::email::{get_email_status, send_email};
+use crate::acs_email::{get_email_status, send_email, ACSProtocol, AuthenticationMethod};
 use crate::models::{
     EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmailBuilder,
 };
@@ -7,7 +7,7 @@ use log::{debug, error, info};
 use std::{env, time};
 use uuid::Uuid;
 
-mod email;
+mod acs_email;
 mod models;
 mod utils;
 
@@ -16,18 +16,18 @@ use lettre::message::header::ContentType;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 
-#[derive(Debug, Clone, ValueEnum)]
-enum ACSProtocol {
-    REST,
-    SMTP,
-}
+
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
-    /// The protocol to use for sending the email (REST or SMTP) (default: REST)
-    #[arg(value_enum, short, long, default_value = "REST")]
+    /// The protocol to use for sending the email (REST: value = rest or SMTP: value = smtp)
+    #[arg(value_enum, short, long, default_value = "rest")]
     protocol: ACSProtocol,
+
+    /// The authentication method to use (ManagedIdentity: value = managed-identity , ServicePrincipal: value = service-principal, SharedKey: value = shared-key)
+    #[arg(value_enum, short, long, default_value = "shared-key")]
+    auth_method: AuthenticationMethod,
 }
 /// Send email using SMTP
 /// This function sends an email using SMTP

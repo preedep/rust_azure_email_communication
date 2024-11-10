@@ -1,3 +1,4 @@
+use clap::ValueEnum;
 use crate::models::{
     EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
 };
@@ -8,6 +9,23 @@ use url::Url;
 
 type EmailResult<T> = Result<T, ErrorResponse>;
 const API_VERSION: &str = "2023-01-15-preview";
+
+
+
+// Define the AuthenticationMethod enum
+#[derive(Debug, Clone, ValueEnum)]
+pub enum AuthenticationMethod {
+    ManagedIdentity,
+    ServicePrincipal,
+    SharedKey,
+}
+
+// Define the ACSProtocol enum
+#[derive(Debug, Clone, ValueEnum)]
+pub enum ACSProtocol {
+    REST,
+    SMTP,
+}
 
 async fn send_request<T>(
     method: reqwest::Method,
