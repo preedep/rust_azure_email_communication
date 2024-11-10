@@ -93,23 +93,23 @@ async fn send_email_with_api(
         .expect("Failed to build ACSClient");
 
     let email_request = SentEmailBuilder::new()
-            .sender(sender.to_owned())
-            .content(EmailContent {
-                subject: Some("An exciting offer especially for you!".to_string()),
-                plain_text: Some("This exciting offer was created especially for you, our most loyal customer.".to_string()),
-                html: Some("<html><head><title>Exciting offer!</title></head><body><h1>This exciting offer was created especially for you, our most loyal customer.</h1></body></html>".to_string()),
-            })
-            .recipients(Recipients {
-                to: Some(vec![EmailAddress {
-                    email: Some(reply_email_to.to_owned()),
-                    display_name: Some(reply_email_to_display.to_owned()),
-                }]),
-                cc: None,
-                b_cc: None,
-            })
-            .user_engagement_tracking_disabled(false)
-            .build()
-            .expect("Failed to build SentEmail");
+        .sender(sender.to_owned())
+        .content(EmailContent {
+            subject: Some("An exciting offer especially for you!".to_string()),
+            plain_text: Some("This exciting offer was created especially for you, our most loyal customer.".to_string()),
+            html: Some("<html><head><title>Exciting offer!</title></head><body><h1>This exciting offer was created especially for you, our most loyal customer.</h1></body></html>".to_string()),
+        })
+        .recipients(Recipients {
+            to: Some(vec![EmailAddress {
+                email: Some(reply_email_to.to_owned()),
+                display_name: Some(reply_email_to_display.to_owned()),
+            }]),
+            cc: None,
+            b_cc: None,
+        })
+        .user_engagement_tracking_disabled(false)
+        .build()
+        .expect("Failed to build SentEmail");
 
     debug!("Email request: {:#?}", email_request);
 
@@ -120,10 +120,7 @@ async fn send_email_with_api(
             info!("email was sent with message id : {}", message_resp_id);
             loop {
                 tokio::time::sleep(time::Duration::from_secs(5)).await;
-                let resp_status = acs_client.get_email_status(
-                    &message_resp_id,
-                )
-                    .await;
+                let resp_status = acs_client.get_email_status(&message_resp_id).await;
                 if let Ok(status) = resp_status {
                     //let status = status.status.unwrap();
                     info!("{}\r\n", status.to_string());
