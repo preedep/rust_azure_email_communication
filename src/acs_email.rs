@@ -1,37 +1,108 @@
-use clap::ValueEnum;
 use crate::models::{
     EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
 };
-use crate::utils::get_request_header;
+use crate::utils::{get_request_header, parse_endpoint};
+
 use log::debug;
+use openssl::ssl::ConnectConfiguration;
 use reqwest::{Client, StatusCode};
 use url::Url;
+use uuid::Uuid;
 
 type EmailResult<T> = Result<T, ErrorResponse>;
 const API_VERSION: &str = "2023-01-15-preview";
 
-
-// Define the AuthenticationMethod enum
-#[derive(Debug, Clone, ValueEnum)]
-pub enum AuthenticationMethod {
+// Azure Communication Services (ACS) authentication method
+enum ACSAuthMethod {
+    SharedKey(String),
+    ServicePrincipal {
+        tenant_id: String,
+        client_id: String,
+        client_secret: String,
+    },
     ManagedIdentity,
-    // Define the ServicePrincipal enum
-    // This enum is used to specify the authentication method when using a service principal
-    // ClientId: The client ID of the service principal
-    // ClientSecret: The client secret of the service principal
-    // TenantId: The tenant ID of the service principal
-    ServicePrincipal,
-    // Define the SharedKey enum
-    // This enum is used to specify the authentication method when using a shared key
-    // SharedKey: The shared key
-    SharedKey,
 }
 
-// Define the ACSProtocol enum
-#[derive(Debug, Clone, ValueEnum)]
-pub enum ACSProtocol {
-    REST,
-    SMTP,
+pub struct ACSClient {
+    host: String,
+    auth_method: ACSAuthMethod,
+}
+
+pub struct ACSClientBuilder {
+    host: Option<String>,
+    connection_string: Option<String>,
+    auth_method: Option<ACSAuthMethod>,
+}
+
+impl ACSClientBuilder {
+    // Create a new builder instance
+    pub fn new() -> Self {
+        ACSClientBuilder {
+            host: None,
+            connection_string: None,
+            auth_method: None,
+        }
+    }
+
+    // Set the host for the client
+    pub fn host(mut self, host: &str) -> Self {
+        self.host = Some(host.to_string());
+        self
+    }
+
+    // Set the authentication method for the client using a shared key
+    pub fn connection_string(mut self, connection_string: &str) -> Self {
+        self.connection_string = Some(connection_string.to_string());
+        self
+    }
+
+    // Set the authentication method for the client using a service principal
+    pub fn service_principal(
+        mut self,
+        tenant_id: &str,
+        client_id: &str,
+        client_secret: &str,
+    ) -> Self {
+        self.auth_method = Some(ACSAuthMethod::ServicePrincipal {
+            tenant_id: tenant_id.to_string(),
+            client_id: client_id.to_string(),
+            client_secret: client_secret.to_string(),
+        });
+        self
+    }
+
+    // Set the authentication method for the client using managed identity
+    pub fn managed_identity(mut self) -> Self {
+        self.auth_method = Some(ACSAuthMethod::ManagedIdentity);
+        self
+    }
+
+    // Build and return the ACSClient
+    pub fn build(self) -> Result<ACSClient, String> {
+        if let Some(connection_string) = self.connection_string {
+            let parsed_res = parse_endpoint(&connection_string)
+                .map_err(|e| format!("Failed to parse connection string: {}", e))?;
+            let host = parsed_res.host_name;
+            let auth_method = ACSAuthMethod::SharedKey(parsed_res.access_key);
+            return Ok(ACSClient { host, auth_method });
+        }
+
+        let host = self.host.ok_or_else(|| "Host is required".to_string())?;
+        let auth_method = self
+            .auth_method
+            .ok_or_else(|| "Authentication method is required".to_string())?;
+        Ok(ACSClient { host, auth_method })
+    }
+}
+
+impl ACSClient {
+    pub async fn send_email(&self, email: &SentEmail) -> EmailResult<String> {
+        let request_id = format!("{}", Uuid::new_v4());
+        acs_send_email(&self.host, &self.auth_method, request_id.as_str(), email).await
+    }
+    pub async fn get_email_status(&self, message_id: &str) -> EmailResult<EmailSendStatusType> {
+        acs_get_email_status(&self.host, &self.auth_method, message_id).await
+    }
 }
 
 async fn send_request<T>(
@@ -104,12 +175,15 @@ fn to_error_response(message: &str, error: impl ToString) -> ErrorResponse {
         }),
     }
 }
-
-pub async fn get_email_status(
+async fn acs_get_email_status(
     host_name: &str,
-    access_key: &str,
+    acs_auth_method: &ACSAuthMethod,
     request_id: &str,
 ) -> EmailResult<EmailSendStatusType> {
+    let access_key = match acs_auth_method {
+        ACSAuthMethod::SharedKey(key) => key,
+        _ => panic!("Shared key is required for getting email status"),
+    };
     let url = format!(
         "https://{}/emails/operations/{}?api-version={}",
         host_name, request_id, API_VERSION
@@ -128,12 +202,17 @@ pub async fn get_email_status(
     }
 }
 
-pub async fn send_email(
+async fn acs_send_email(
     host: &str,
-    access_key: &str,
+    acs_auth_method: &ACSAuthMethod,
     request_id: &str,
     email: &SentEmail,
 ) -> EmailResult<String> {
+    let access_key = match acs_auth_method {
+        ACSAuthMethod::SharedKey(key) => key,
+        _ => panic!("Shared key is required for sending email"),
+    };
+
     let url = format!("https://{}/emails:send?api-version={}", host, API_VERSION);
     let response = send_request(
         reqwest::Method::POST,

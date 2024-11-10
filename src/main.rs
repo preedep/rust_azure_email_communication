@@ -1,4 +1,3 @@
-use crate::acs_email::{get_email_status, send_email, ACSProtocol, AuthenticationMethod};
 use crate::models::{
     EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmailBuilder,
 };
@@ -11,23 +10,37 @@ mod acs_email;
 mod models;
 mod utils;
 
+use crate::acs_email::ACSClientBuilder;
 use clap::{Parser, ValueEnum};
 use lettre::message::header::ContentType;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 
+// Define the AuthenticationMethod enum
+#[derive(Debug, Clone, ValueEnum)]
+pub enum CLIAuthenticationMethod {
+    ManagedIdentity,
+    ServicePrincipal,
+    SharedKey,
+}
 
+// Define the ACSProtocol enum
+#[derive(Debug, Clone, ValueEnum)]
+pub enum CLIACSProtocol {
+    REST,
+    SMTP,
+}
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
     /// The protocol to use for sending the email (REST: value = rest or SMTP: value = smtp)
     #[arg(value_enum, short, long, default_value = "rest")]
-    protocol: ACSProtocol,
+    protocol: CLIACSProtocol,
 
     /// The authentication method to use (ManagedIdentity: value = managed-identity , ServicePrincipal: value = service-principal, SharedKey: value = shared-key)
     #[arg(value_enum, short, long, default_value = "shared-key")]
-    auth_method: AuthenticationMethod,
+    auth_method: CLIAuthenticationMethod,
 }
 /// Send email using SMTP
 /// This function sends an email using SMTP
@@ -74,13 +87,12 @@ async fn send_email_with_api(
     reply_email_to: &str,
     reply_email_to_display: &str,
 ) {
-    let res_parse_endpoint = parse_endpoint(&connection_str);
-    if let Ok(endpoint) = res_parse_endpoint {
-        let request_id = format!("{}", Uuid::new_v4());
-        let access_key = endpoint.access_key;
-        let host_name = endpoint.host_name;
+    let acs_client = ACSClientBuilder::new()
+        .connection_string(connection_str)
+        .build()
+        .expect("Failed to build ACSClient");
 
-        let email_request = SentEmailBuilder::new()
+    let email_request = SentEmailBuilder::new()
             .sender(sender.to_owned())
             .content(EmailContent {
                 subject: Some("An exciting offer especially for you!".to_string()),
@@ -99,59 +111,48 @@ async fn send_email_with_api(
             .build()
             .expect("Failed to build SentEmail");
 
-        debug!("Email request: {:#?}", email_request);
+    debug!("Email request: {:#?}", email_request);
 
-        let resp_send_email = send_email(
-            &host_name.to_string(),
-            &access_key.to_string(),
-            &request_id,
-            &email_request,
-        )
-        .await;
+    let resp_send_email = acs_client.send_email(&email_request).await;
 
-        match resp_send_email {
-            Ok(message_resp_id) => {
-                info!("email was sent with message id : {}", message_resp_id);
-                loop {
-                    tokio::time::sleep(time::Duration::from_secs(5)).await;
-                    let resp_status = get_email_status(
-                        &host_name.to_string(),
-                        &access_key.to_string(),
-                        &message_resp_id,
-                    )
+    match resp_send_email {
+        Ok(message_resp_id) => {
+            info!("email was sent with message id : {}", message_resp_id);
+            loop {
+                tokio::time::sleep(time::Duration::from_secs(5)).await;
+                let resp_status = acs_client.get_email_status(
+                    &message_resp_id,
+                )
                     .await;
-                    if let Ok(status) = resp_status {
-                        //let status = status.status.unwrap();
-                        info!("{}\r\n", status.to_string());
-                        match status {
-                            EmailSendStatusType::Unknown => {
-                                break;
-                            }
-                            EmailSendStatusType::Canceled => {
-                                break;
-                            }
-                            EmailSendStatusType::Failed => {
-                                break;
-                            }
-                            EmailSendStatusType::NotStarted => {}
-                            EmailSendStatusType::Running => {}
-                            EmailSendStatusType::Succeeded => {
-                                break;
-                            }
+                if let Ok(status) = resp_status {
+                    //let status = status.status.unwrap();
+                    info!("{}\r\n", status.to_string());
+                    match status {
+                        EmailSendStatusType::Unknown => {
+                            break;
                         }
-                    } else {
-                        error!("Error getting email status: {:?}", resp_status);
-                        break;
+                        EmailSendStatusType::Canceled => {
+                            break;
+                        }
+                        EmailSendStatusType::Failed => {
+                            break;
+                        }
+                        EmailSendStatusType::NotStarted => {}
+                        EmailSendStatusType::Running => {}
+                        EmailSendStatusType::Succeeded => {
+                            break;
+                        }
                     }
+                } else {
+                    error!("Error getting email status: {:?}", resp_status);
+                    break;
                 }
-                info!("========");
             }
-            Err(e) => {
-                error!("Error sending email: {:?}", e);
-            }
+            info!("========");
         }
-    } else {
-        error!("Error parsing endpoint: {:?}", res_parse_endpoint);
+        Err(e) => {
+            error!("Error sending email: {:?}", e);
+        }
     }
 }
 #[tokio::main]
@@ -162,13 +163,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args = Cli::parse();
     match args.protocol {
-        ACSProtocol::REST => {
+        CLIACSProtocol::REST => {
             info!("Sending email using REST API");
 
             let connection_str = env::var("CONNECTION_STR").unwrap();
             let sender = env::var("SENDER").unwrap();
             let reply_email_to = env::var("REPLY_EMAIL").unwrap();
             let reply_email_to_display = env::var("REPLY_EMAIL_DISPLAY").unwrap();
+
+            let auth_method = args.auth_method;
+
+            match auth_method {
+                CLIAuthenticationMethod::ManagedIdentity => {
+                    info!("Using Managed Identity");
+                }
+                CLIAuthenticationMethod::ServicePrincipal => {
+                    info!("Using Service Principal");
+                }
+                CLIAuthenticationMethod::SharedKey => {
+                    info!("Using Shared Key");
+                }
+            }
 
             send_email_with_api(
                 connection_str.as_str(),
@@ -178,7 +193,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .await;
         }
-        ACSProtocol::SMTP => {
+        CLIACSProtocol::SMTP => {
             info!("Sending email using SMTP");
             let sender = env::var("SENDER").unwrap();
             let reply_email_to = env::var("REPLY_EMAIL").unwrap();
