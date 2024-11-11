@@ -10,6 +10,15 @@ use url::Url;
 
 type HmacSha256 = Hmac<Sha256>;
 
+/// Computes the SHA-256 hash of the given content and encodes it in base64.
+///
+/// # Arguments
+///
+/// * `content` - A string slice that holds the content to be hashed.
+///
+/// # Returns
+///
+/// * `String` - The base64 encoded SHA-256 hash of the content.
 pub fn compute_content_sha256(content: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(content.as_bytes());
@@ -17,6 +26,16 @@ pub fn compute_content_sha256(content: &str) -> String {
     general_purpose::STANDARD.encode(&result)
 }
 
+/// Computes the HMAC-SHA256 signature for the given string using the provided secret.
+///
+/// # Arguments
+///
+/// * `string_to_sign` - A string slice that holds the string to be signed.
+/// * `secret` - A string slice that holds the secret key.
+///
+/// # Returns
+///
+/// * `Result<String, String>` - The base64 encoded HMAC-SHA256 signature or an error message.
 pub fn compute_signature(string_to_sign: &str, secret: &str) -> Result<String, String> {
     let decoded_secret = general_purpose::STANDARD
         .decode(secret)
@@ -29,6 +48,15 @@ pub fn compute_signature(string_to_sign: &str, secret: &str) -> Result<String, S
     Ok(general_purpose::STANDARD.encode(code_bytes))
 }
 
+/// Parses the endpoint string and extracts the host name and access key.
+///
+/// # Arguments
+///
+/// * `endpoint` - A string slice that holds the endpoint string.
+///
+/// # Returns
+///
+/// * `Result<EndPointParams, String>` - The parsed endpoint parameters or an error message.
 pub fn parse_endpoint(endpoint: &str) -> Result<EndPointParams, String> {
     debug!("Parsing endpoint");
     let parameters: Vec<&str> = endpoint.split(';').collect();
@@ -61,6 +89,19 @@ pub fn parse_endpoint(endpoint: &str) -> Result<EndPointParams, String> {
     Ok(end_point_params)
 }
 
+/// Creates the request headers for the given parameters.
+///
+/// # Arguments
+///
+/// * `url_endpoint` - A reference to the `Url` struct representing the endpoint URL.
+/// * `http_method` - A string slice that holds the HTTP method.
+/// * `request_id` - A string slice that holds the request ID.
+/// * `json_payload` - A string slice that holds the JSON payload.
+/// * `access_key` - A string slice that holds the access key.
+///
+/// # Returns
+///
+/// * `Result<HeaderMap, String>` - The created request headers or an error message.
 pub fn get_request_header(
     url_endpoint: &Url,
     http_method: &str,
@@ -98,7 +139,6 @@ pub fn get_request_header(
         signature
     );
     headers.insert("Authorization", authorization.parse().unwrap());
-    debug!("Headers: {:#?}", headers);
 
     Ok(headers)
 }

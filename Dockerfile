@@ -10,22 +10,18 @@ RUN rustup target add x86_64-unknown-linux-musl
 
 # Copy manifests and build dependencies
 COPY Cargo.toml Cargo.lock ./
-# Make folders for the source code
 RUN mkdir src/
-# Copy the source code
 COPY src/ ./src/
 
-RUN cargo build --release
+# Build the application
+RUN cargo build --release --target x86_64-unknown-linux-musl
 
 # Stage 2: Runtime
-FROM alpine:3.20
+FROM scratch
 WORKDIR /app
 
-# Install necessary runtime dependencies
-RUN apk add --no-cache ca-certificates
-
 # Copy the compiled binary from the builder stage
-COPY --from=builder /app/target/release/azure_email_service .
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/azure_email_service .
 
 # Set the binary as the entrypoint
 ENTRYPOINT ["./azure_email_service"]
