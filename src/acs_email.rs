@@ -230,18 +230,18 @@ async fn create_headers(
                 reqwest::header::AUTHORIZATION,
                 format!("Bearer {}", token).parse().unwrap(),
             );
+            headers.insert(
+                reqwest::header::CONTENT_TYPE,
+                "application/json".parse().unwrap(),
+            );
+            headers.insert(
+                reqwest::header::HeaderName::from_static("x-ms-client-request-id"),
+                request_id.parse().unwrap(),
+            );
         }
     }
 
-    headers.insert(
-        reqwest::header::CONTENT_TYPE,
-        "application/json".parse().unwrap(),
-    );
-    headers.insert(
-        reqwest::header::HeaderName::from_static("x-ms-client-request-id"),
-        request_id.parse().unwrap(),
-    );
-
+    debug!("Headers: {:#?}", headers);
     Ok(headers)
 }
 

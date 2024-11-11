@@ -98,7 +98,7 @@ pub fn get_request_header(
         signature
     );
     headers.insert("Authorization", authorization.parse().unwrap());
-    debug!("Headers: {:#?}", headers);
+
 
     Ok(headers)
 }
