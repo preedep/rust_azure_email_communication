@@ -115,9 +115,9 @@ impl ACSClient {
 async fn send_request<T>(
     method: reqwest::Method,
     url: &str,
-    access_key: &str,
     request_id: &str,
     body: Option<&T>,
+    acs_auth_method: &ACSAuthMethod,
 ) -> EmailResult<reqwest::Response>
 where
     T: serde::Serialize,
@@ -130,8 +130,8 @@ where
         method.as_str(),
         request_id,
         &json_body,
-        access_key,
-    )?;
+        acs_auth_method
+    ).await?;
     let request_builder = client.request(method, url).headers(headers);
     let request_builder = if let Some(body) = body {
         request_builder.json(body)
@@ -158,7 +158,7 @@ fn serialize_body<T: serde::Serialize>(body: Option<&T>) -> EmailResult<String> 
 }
 // Adding a function to create a `HttpClient`
 fn create_http_client() -> Arc<dyn HttpClient> {
-    // Assuming `reqwest` is used as the HTTP client
+    // Assuming `request` is used as the HTTP client
     Arc::new(Client::new()) as Arc<dyn HttpClient>
 }
 
@@ -202,21 +202,46 @@ async fn get_access_token(auth_method: &ACSAuthMethod) -> Result<String, String>
     Ok("".to_string())
 }
 
-fn create_headers(
+async fn create_headers(
     url_endpoint: &Url,
     method: &str,
     request_id: &str,
     json_body: &str,
-    access_key: &str,
+    auth_method: &ACSAuthMethod,
 ) -> EmailResult<reqwest::header::HeaderMap> {
-    get_request_header(
-        url_endpoint,
-        method,
-        &request_id.to_string(),
-        json_body,
-        &access_key.to_string(),
-    )
-    .map_err(|e| to_error_response("Header creation failed", e))
+    let mut headers = reqwest::header::HeaderMap::new();
+
+    match auth_method {
+        ACSAuthMethod::SharedKey(share_key) => {
+            headers = get_request_header(
+                url_endpoint,
+                method,
+                request_id,
+                json_body,
+                share_key,
+            )
+                .map_err(|e| to_error_response("Header creation failed", e))?
+        }
+        ACSAuthMethod::ServicePrincipal { .. } | ACSAuthMethod::ManagedIdentity => {
+            let token = get_access_token(auth_method).await
+                .map_err(|e| to_error_response("Failed to acquire access token", e))?;
+            headers.insert(
+                reqwest::header::AUTHORIZATION,
+                format!("Bearer {}", token).parse().unwrap(),
+            );
+        }
+    }
+
+    headers.insert(
+        reqwest::header::CONTENT_TYPE,
+        "application/json".parse().unwrap(),
+    );
+    headers.insert(
+        reqwest::header::HeaderName::from_static("x-ms-client-request-id"),
+        request_id.parse().unwrap(),
+    );
+
+    Ok(headers)
 }
 
 fn to_error_response(message: &str, error: impl ToString) -> ErrorResponse {
@@ -241,7 +266,7 @@ async fn acs_get_email_status(
         host_name, request_id, API_VERSION
     );
     let response =
-        send_request::<()>(reqwest::Method::GET, &url, access_key, request_id, None).await?;
+        send_request::<()>(reqwest::Method::GET, &url, request_id, None, acs_auth_method).await?;
     if response.status() == StatusCode::OK {
         let email_response = parse_response::<SentEmailResponse>(response).await?;
         email_response
@@ -260,18 +285,14 @@ async fn acs_send_email(
     request_id: &str,
     email: &SentEmail,
 ) -> EmailResult<String> {
-    let access_key = match acs_auth_method {
-        ACSAuthMethod::SharedKey(key) => key,
-        _ => panic!("Shared key is required for sending email"),
-    };
 
     let url = format!("https://{}/emails:send?api-version={}", host, API_VERSION);
     let response = send_request(
         reqwest::Method::POST,
         &url,
-        access_key,
         request_id,
         Some(email),
+        acs_auth_method,
     )
     .await?;
     debug!("{:#?}", response);
