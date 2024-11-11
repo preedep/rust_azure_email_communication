@@ -101,10 +101,29 @@ impl ACSClientBuilder {
 }
 
 impl ACSClient {
+    /// Send an email using the ACS client.
+    ///
+    /// # Arguments
+    ///
+    /// * `email` - A reference to the `SentEmail` struct containing the email details.
+    ///
+    /// # Returns
+    ///
+    /// * `EmailResult<String>` - The result of the email send operation, containing the message ID if successful.
     pub async fn send_email(&self, email: &SentEmail) -> EmailResult<String> {
         let request_id = format!("{}", Uuid::new_v4());
         acs_send_email(&self.host, &self.auth_method, request_id.as_str(), email).await
     }
+
+    /// Get the status of a sent email using the ACS client.
+    ///
+    /// # Arguments
+    ///
+    /// * `message_id` - A reference to the message ID string.
+    ///
+    /// # Returns
+    ///
+    /// * `EmailResult<EmailSendStatusType>` - The result of the email status query, containing the status if successful.
     pub async fn get_email_status(&self, message_id: &str) -> EmailResult<EmailSendStatusType> {
         acs_get_email_status(&self.host, &self.auth_method, message_id).await
     }
@@ -154,12 +173,22 @@ fn serialize_body<T: serde::Serialize>(body: Option<&T>) -> EmailResult<String> 
         Ok(String::new())
     }
 }
+
 // Adding a function to create a `HttpClient`
 fn create_http_client() -> Arc<dyn HttpClient> {
     // Assuming `request` is used as the HTTP client
     Arc::new(Client::new()) as Arc<dyn HttpClient>
 }
 
+/// Get an access token based on the provided authentication method.
+///
+/// # Arguments
+///
+/// * `auth_method` - A reference to the `ACSAuthMethod` enum specifying the authentication method.
+///
+/// # Returns
+///
+/// * `Result<String, String>` - The result of the token acquisition, containing the token if successful.
 async fn get_access_token(auth_method: &ACSAuthMethod) -> Result<String, String> {
     match auth_method {
         ACSAuthMethod::ServicePrincipal {
@@ -203,6 +232,19 @@ async fn get_access_token(auth_method: &ACSAuthMethod) -> Result<String, String>
     Ok("".to_string())
 }
 
+/// Create headers for the request based on the provided authentication method.
+///
+/// # Arguments
+///
+/// * `url_endpoint` - A reference to the `Url` struct representing the endpoint URL.
+/// * `method` - A reference to the HTTP method string.
+/// * `request_id` - A reference to the request ID string.
+/// * `json_body` - A reference to the JSON body string.
+/// * `auth_method` - A reference to the `ACSAuthMethod` enum specifying the authentication method.
+///
+/// # Returns
+///
+/// * `EmailResult<reqwest::header::HeaderMap>` - The result of the header creation, containing the headers if successful.
 async fn create_headers(
     url_endpoint: &Url,
     method: &str,
@@ -245,6 +287,16 @@ async fn create_headers(
     Ok(headers)
 }
 
+/// Convert an error into an `ErrorResponse`.
+///
+/// # Arguments
+///
+/// * `message` - A reference to the error message string.
+/// * `error` - An object that implements the `ToString` trait.
+///
+/// # Returns
+///
+/// * `ErrorResponse` - The error response containing the error details.
 fn to_error_response(message: &str, error: impl ToString) -> ErrorResponse {
     ErrorResponse {
         error: Some(ErrorDetail {
@@ -253,6 +305,18 @@ fn to_error_response(message: &str, error: impl ToString) -> ErrorResponse {
         }),
     }
 }
+
+/// Get the status of a sent email using the ACS client.
+///
+/// # Arguments
+///
+/// * `host_name` - A reference to the host name string.
+/// * `acs_auth_method` - A reference to the `ACSAuthMethod` enum specifying the authentication method.
+/// * `request_id` - A reference to the request ID string.
+///
+/// # Returns
+///
+/// * `EmailResult<EmailSendStatusType>` - The result of the email status query, containing the status if successful.
 async fn acs_get_email_status(
     host_name: &str,
     acs_auth_method: &ACSAuthMethod,
@@ -277,6 +341,18 @@ async fn acs_get_email_status(
     }
 }
 
+/// Send an email using the ACS client.
+///
+/// # Arguments
+///
+/// * `host` - A reference to the host string.
+/// * `acs_auth_method` - A reference to the `ACSAuthMethod` enum specifying the authentication method.
+/// * `request_id` - A reference to the request ID string.
+/// * `email` - A reference to the `SentEmail` struct containing the email details.
+///
+/// # Returns
+///
+/// * `EmailResult<String>` - The result of the email send operation, containing the message ID if successful.
 async fn acs_send_email(
     host: &str,
     acs_auth_method: &ACSAuthMethod,
@@ -292,11 +368,20 @@ async fn acs_send_email(
         Some(email),
         acs_auth_method,
     )
-    .await?;
+        .await?;
     debug!("{:#?}", response);
     handle_response(response).await
 }
 
+/// Handle the response from the email send operation.
+///
+/// # Arguments
+///
+/// * `response` - The `reqwest::Response` object.
+///
+/// # Returns
+///
+/// * `EmailResult<String>` - The result of the response handling, containing the message ID if successful.
 async fn handle_response(response: reqwest::Response) -> EmailResult<String> {
     if response.status() == StatusCode::ACCEPTED {
         parse_response::<SentEmailResponse>(response)
@@ -308,6 +393,15 @@ async fn handle_response(response: reqwest::Response) -> EmailResult<String> {
     }
 }
 
+/// Parse the response from the email send operation.
+///
+/// # Arguments
+///
+/// * `response` - The `reqwest::Response` object.
+///
+/// # Returns
+///
+/// * `EmailResult<T>` - The result of the response parsing, containing the parsed response if successful.
 async fn parse_response<T>(response: reqwest::Response) -> EmailResult<T>
 where
     T: serde::de::DeserializeOwned,
@@ -318,15 +412,34 @@ where
         .map_err(|e| to_error_response("Failed to parse response", e))
 }
 
+/// Parse the error response from the email send operation.
+///
+/// # Arguments
+///
+/// * `response` - The `reqwest::Response` object.
+///
+/// # Returns
+///
+/// * `EmailResult<String>` - The result of the error response parsing, containing the error response if successful.
 async fn parse_error_response(response: reqwest::Response) -> EmailResult<String> {
     let error_response = parse_response::<ErrorResponse>(response).await?;
     Err(error_response)
 }
 
+/// Create an error response for a missing status.
+///
+/// # Returns
+///
+/// * `ErrorResponse` - The error response indicating a missing status.
 fn create_missing_status_error() -> ErrorResponse {
     to_error_response("Missing status in response", "")
 }
 
+/// Create an error response for a missing ID.
+///
+/// # Returns
+///
+/// * `ErrorResponse` - The error response indicating a missing ID.
 fn create_missing_id_error() -> ErrorResponse {
     to_error_response("Missing ID in response", "")
 }
