@@ -1,6 +1,6 @@
-# Azure Email Communication
+# Azure Email Communication Service - Rust
 
-Prove of concept , Rust call Rest API of Azure Email Communication Service
+This is a simple example of how to send an email using Azure Communication Service with REST API and SMTP.
 
 It is developed according to this document.
 
