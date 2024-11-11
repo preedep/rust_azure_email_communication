@@ -92,6 +92,7 @@ async fn send_email_with_api(
         CLIAuthenticationMethod::ManagedIdentity => {
             info!("Using Managed Identity");
             let host_name = env::var("ASC_URL").unwrap();
+            debug!("host_name: {}", host_name);
             ACSClientBuilder::new().managed_identity().host(host_name.as_str())
         }
         CLIAuthenticationMethod::ServicePrincipal => {
@@ -100,6 +101,12 @@ async fn send_email_with_api(
             let tenant_id = env::var("TENANT_ID").unwrap();
             let client_id = env::var("CLIENT_ID").unwrap();
             let client_secret = env::var("CLIENT_SECRET").unwrap();
+
+            debug!("host_name: {}", host_name);
+            debug!("tenant_id: {}", tenant_id);
+            debug!("client_id: {}", client_id);
+            debug!("client_secret: {}", client_secret);
+
             ACSClientBuilder::new()
                 .host(host_name.as_str())
                 .service_principal(tenant_id.as_str(), client_id.as_str(), client_secret.as_str())
