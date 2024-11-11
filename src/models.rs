@@ -58,7 +58,6 @@ pub struct ErrorDetail {
 
     // #[serde(rename = "details")]
     // pub(crate) details: Option<ErrorDetail>,
-
     /// The error message.
     #[serde(rename = "message")]
     pub(crate) message: Option<String>,
