@@ -82,15 +82,34 @@ async fn send_email_with_smtp(
 /// This function sends an email using the REST API
 /// The sender, reply email, connection string, access key and host name are read from the environment variables
 async fn send_email_with_api(
-    connection_str: &str,
+    auth_method: &CLIAuthenticationMethod,
     sender: &str,
     reply_email_to: &str,
     reply_email_to_display: &str,
 ) {
-    let acs_client = ACSClientBuilder::new()
-        .connection_string(connection_str)
-        .build()
-        .expect("Failed to build ACSClient");
+
+    let acs_client_builder : ACSClientBuilder= match auth_method {
+        CLIAuthenticationMethod::ManagedIdentity => {
+            info!("Using Managed Identity");
+            let host_name = env::var("ASC_URL").unwrap();
+            ACSClientBuilder::new().managed_identity().host(host_name.as_str())
+        }
+        CLIAuthenticationMethod::ServicePrincipal => {
+            info!("Using Service Principal");
+            let host_name = env::var("ASC_URL").unwrap();
+            let tenant_id = env::var("TENANT_ID").unwrap();
+            let client_id = env::var("CLIENT_ID").unwrap();
+            let client_secret = env::var("CLIENT_SECRET").unwrap();
+            ACSClientBuilder::new()
+                .host(host_name.as_str())
+                .service_principal(tenant_id.as_str(), client_id.as_str(), client_secret.as_str())
+        }
+        CLIAuthenticationMethod::SharedKey => {
+            info!("Using Shared Key");
+            let connection_str = env::var("CONNECTION_STR").unwrap();
+            ACSClientBuilder::new().connection_string(connection_str.as_str())
+        }
+    };
 
     let email_request = SentEmailBuilder::new()
         .sender(sender.to_owned())
@@ -112,6 +131,9 @@ async fn send_email_with_api(
         .expect("Failed to build SentEmail");
 
     debug!("Email request: {:#?}", email_request);
+
+
+    let acs_client = acs_client_builder.build().expect("Failed to build ACSClient");
 
     let resp_send_email = acs_client.send_email(&email_request).await;
 
@@ -163,27 +185,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         CLIACSProtocol::REST => {
             info!("Sending email using REST API");
 
-            let connection_str = env::var("CONNECTION_STR").unwrap();
+
             let sender = env::var("SENDER").unwrap();
             let reply_email_to = env::var("REPLY_EMAIL").unwrap();
             let reply_email_to_display = env::var("REPLY_EMAIL_DISPLAY").unwrap();
 
-            let auth_method = args.auth_method;
-
-            match auth_method {
-                CLIAuthenticationMethod::ManagedIdentity => {
-                    info!("Using Managed Identity");
-                }
-                CLIAuthenticationMethod::ServicePrincipal => {
-                    info!("Using Service Principal");
-                }
-                CLIAuthenticationMethod::SharedKey => {
-                    info!("Using Shared Key");
-                }
-            }
 
             send_email_with_api(
-                connection_str.as_str(),
+                &args.auth_method,
                 sender.as_str(),
                 reply_email_to.as_str(),
                 reply_email_to_display.as_str(),
