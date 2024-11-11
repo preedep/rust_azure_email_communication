@@ -260,10 +260,7 @@ async fn acs_get_email_status(
     acs_auth_method: &ACSAuthMethod,
     request_id: &str,
 ) -> EmailResult<EmailSendStatusType> {
-    let access_key = match acs_auth_method {
-        ACSAuthMethod::SharedKey(key) => key,
-        _ => panic!("Shared key is required for getting email status"),
-    };
+
     let url = format!(
         "https://{}/emails/operations/{}?api-version={}",
         host_name, request_id, API_VERSION
