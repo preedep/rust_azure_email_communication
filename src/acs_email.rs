@@ -203,6 +203,10 @@ async fn get_access_token(auth_method: &ACSAuthMethod) -> Result<String, String>
                 tenant_id
             );
             debug!("Token URL: {}", token_url);
+            debug!("Creating client secret credential");
+            debug!("Client ID: {}", client_id);
+            debug!("Client Secret: {}", client_secret);
+            debug!("Tenant ID: {}", tenant_id);
             let credential = ClientSecretCredential::new(
                 http_client,
                 Url::parse(&token_url).unwrap(),
