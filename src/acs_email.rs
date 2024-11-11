@@ -198,10 +198,12 @@ async fn get_access_token(auth_method: &ACSAuthMethod) -> Result<String, String>
         } => {
             // Use Azure AD client credential flow (requires async-http-client support)
             let http_client = create_http_client();
+            /*
             let token_url = format!(
                 "https://login.microsoftonline.com/{}/oauth2/v2.0/token",
                 tenant_id
-            );
+            );*/
+            let token_url = "https://login.microsoftonline.com/";
             debug!("Token URL: {}", token_url);
             debug!("Creating client secret credential");
             debug!("Client ID: {}", client_id);
@@ -329,8 +331,12 @@ async fn acs_get_email_status(
 
     let url = format!(
         "https://{}/emails/operations/{}?api-version={}",
-        host_name, request_id, API_VERSION
+        host_name.replace("https://",""),
+        request_id,
+        API_VERSION
     );
+    debug!("end point URL: {}", url);
+
     let response =
         send_request::<()>(reqwest::Method::GET, &url, request_id, None, acs_auth_method).await?;
     if response.status() == StatusCode::OK {
@@ -364,7 +370,8 @@ async fn acs_send_email(
     email: &SentEmail,
 ) -> EmailResult<String> {
 
-    let url = format!("https://{}/emails:send?api-version={}", host, API_VERSION);
+    let url = format!("https://{}/emails:send?api-version={}", host.replace("https://",""), API_VERSION);
+    debug!("end point URL: {}", url);
     let response = send_request(
         reqwest::Method::POST,
         &url,
