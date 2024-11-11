@@ -84,13 +84,14 @@ async fn send_email_with_api(
     reply_email_to: &str,
     reply_email_to_display: &str,
 ) {
-
-    let acs_client_builder : ACSClientBuilder= match auth_method {
+    let acs_client_builder: ACSClientBuilder = match auth_method {
         CLIAuthenticationMethod::ManagedIdentity => {
             info!("Using Managed Identity");
             let host_name = env::var("ASC_URL").unwrap();
             debug!("host_name: {}", host_name);
-            ACSClientBuilder::new().managed_identity().host(host_name.as_str())
+            ACSClientBuilder::new()
+                .managed_identity()
+                .host(host_name.as_str())
         }
         CLIAuthenticationMethod::ServicePrincipal => {
             info!("Using Service Principal");
@@ -106,7 +107,11 @@ async fn send_email_with_api(
 
             ACSClientBuilder::new()
                 .host(host_name.as_str())
-                .service_principal(tenant_id.as_str(), client_id.as_str(), client_secret.as_str())
+                .service_principal(
+                    tenant_id.as_str(),
+                    client_id.as_str(),
+                    client_secret.as_str(),
+                )
         }
         CLIAuthenticationMethod::SharedKey => {
             info!("Using Shared Key");
@@ -136,8 +141,9 @@ async fn send_email_with_api(
 
     debug!("Email request: {:#?}", email_request);
 
-
-    let acs_client = acs_client_builder.build().expect("Failed to build ACSClient");
+    let acs_client = acs_client_builder
+        .build()
+        .expect("Failed to build ACSClient");
 
     let resp_send_email = acs_client.send_email(&email_request).await;
 
@@ -189,11 +195,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         CLIACSProtocol::REST => {
             info!("Sending email using REST API");
 
-
             let sender = env::var("SENDER").unwrap();
             let reply_email_to = env::var("REPLY_EMAIL").unwrap();
             let reply_email_to_display = env::var("REPLY_EMAIL_DISPLAY").unwrap();
-
 
             send_email_with_api(
                 &args.auth_method,
