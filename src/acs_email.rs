@@ -175,6 +175,7 @@ async fn get_access_token(auth_method: &ACSAuthMethod) -> Result<String, String>
                 "https://login.microsoftonline.com/{}/oauth2/v2.0/token",
                 tenant_id
             );
+            debug!("Token URL: {}", token_url);
             let credential = ClientSecretCredential::new(
                 http_client,
                 Url::parse(&token_url).unwrap(),
@@ -186,6 +187,8 @@ async fn get_access_token(auth_method: &ACSAuthMethod) -> Result<String, String>
                 .get_token(&["https://communication.azure.com/.default"])
                 .await
                 .map_err(|e| format!("Failed to get access token: {}", e))?;
+            debug!("Access token: {:#?}", token);
+
             return Ok(token.token.secret().to_owned());
         }
         ACSAuthMethod::ManagedIdentity => {
