@@ -17,7 +17,7 @@ COPY src/ ./src/
 RUN cargo build --release --target x86_64-unknown-linux-musl
 
 # Stage 2: Runtime
-FROM scratch
+FROM alpine:3.13.5
 WORKDIR /app
 
 # Copy the compiled binary from the builder stage
