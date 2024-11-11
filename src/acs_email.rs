@@ -4,9 +4,7 @@ use crate::models::{
 use crate::utils::{get_request_header, parse_endpoint};
 use azure_core::auth::TokenCredential;
 use azure_core::HttpClient;
-use azure_identity::{
-    create_credential, ClientSecretCredential
-};
+use azure_identity::{create_credential, ClientSecretCredential};
 use std::sync::Arc;
 
 use log::debug;
@@ -147,8 +145,9 @@ where
         method.as_str(),
         request_id,
         &json_body,
-        acs_auth_method
-    ).await?;
+        acs_auth_method,
+    )
+    .await?;
     let request_builder = client.request(method, url).headers(headers);
     let request_builder = if let Some(body) = body {
         request_builder.json(body)
@@ -262,17 +261,12 @@ async fn create_headers(
 
     match auth_method {
         ACSAuthMethod::SharedKey(share_key) => {
-            headers = get_request_header(
-                url_endpoint,
-                method,
-                request_id,
-                json_body,
-                share_key,
-            )
+            headers = get_request_header(url_endpoint, method, request_id, json_body, share_key)
                 .map_err(|e| to_error_response("Header creation failed", e))?
         }
         ACSAuthMethod::ServicePrincipal { .. } | ACSAuthMethod::ManagedIdentity => {
-            let token = get_access_token(auth_method).await
+            let token = get_access_token(auth_method)
+                .await
                 .map_err(|e| to_error_response("Failed to acquire access token", e))?;
             headers.insert(
                 reqwest::header::AUTHORIZATION,
@@ -328,17 +322,22 @@ async fn acs_get_email_status(
     acs_auth_method: &ACSAuthMethod,
     request_id: &str,
 ) -> EmailResult<EmailSendStatusType> {
-
     let url = format!(
         "https://{}/emails/operations/{}?api-version={}",
-        host_name.replace("https://",""),
+        host_name.replace("https://", ""),
         request_id,
         API_VERSION
     );
     debug!("end point URL: {}", url);
 
-    let response =
-        send_request::<()>(reqwest::Method::GET, &url, request_id, None, acs_auth_method).await?;
+    let response = send_request::<()>(
+        reqwest::Method::GET,
+        &url,
+        request_id,
+        None,
+        acs_auth_method,
+    )
+    .await?;
     if response.status() == StatusCode::OK {
         let email_response = parse_response::<SentEmailResponse>(response).await?;
         email_response
@@ -369,8 +368,11 @@ async fn acs_send_email(
     request_id: &str,
     email: &SentEmail,
 ) -> EmailResult<String> {
-
-    let url = format!("https://{}/emails:send?api-version={}", host.replace("https://",""), API_VERSION);
+    let url = format!(
+        "https://{}/emails:send?api-version={}",
+        host.replace("https://", ""),
+        API_VERSION
+    );
     debug!("end point URL: {}", url);
     let response = send_request(
         reqwest::Method::POST,
@@ -379,7 +381,7 @@ async fn acs_send_email(
         Some(email),
         acs_auth_method,
     )
-        .await?;
+    .await?;
     debug!("{:#?}", response);
     handle_response(response).await
 }
