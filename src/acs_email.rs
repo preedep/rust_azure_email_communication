@@ -188,7 +188,15 @@ async fn get_access_token(auth_method: &ACSAuthMethod) -> Result<String, String>
                 .map_err(|e| format!("Failed to get access token: {}", e))?;
             return Ok(token.token.secret().to_owned());
         }
-        ACSAuthMethod::ManagedIdentity => {}
+        ACSAuthMethod::ManagedIdentity => {
+            let credential =
+                create_credential().map_err(|e| format!("Failed to create credential: {}", e))?;
+            let token = credential
+                .get_token(&["https://communication.azure.com/.default"])
+                .await
+                .map_err(|e| format!("Failed to get access token: {}", e))?;
+            return Ok(token.token.secret().to_owned());
+        }
         _ => {}
     }
     Ok("".to_string())
