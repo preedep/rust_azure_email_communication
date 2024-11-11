@@ -1,11 +1,8 @@
 use crate::models::{
     EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmailBuilder,
 };
-use crate::utils::parse_endpoint;
 use log::{debug, error, info};
 use std::{env, time};
-use uuid::Uuid;
-
 mod acs_email;
 mod models;
 mod utils;

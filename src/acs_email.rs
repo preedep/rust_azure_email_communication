@@ -5,13 +5,11 @@ use crate::utils::{get_request_header, parse_endpoint};
 use azure_core::auth::TokenCredential;
 use azure_core::HttpClient;
 use azure_identity::{
-    create_credential, create_default_credential, ClientSecretCredential, DefaultAzureCredential,
-    DefaultAzureCredentialBuilder,
+    create_credential, ClientSecretCredential
 };
 use std::sync::Arc;
 
 use log::debug;
-use openssl::ssl::ConnectConfiguration;
 use reqwest::{Client, StatusCode};
 use url::Url;
 use uuid::Uuid;
