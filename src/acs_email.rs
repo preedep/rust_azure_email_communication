@@ -6,9 +6,11 @@ use azure_core::auth::TokenCredential;
 use azure_core::HttpClient;
 use azure_identity::{create_credential, ClientSecretCredential};
 use std::sync::Arc;
-
-use log::debug;
+use std::time::Duration;
+use log::{debug, error};
+use reqwest::header::RETRY_AFTER;
 use reqwest::{Client, StatusCode};
+use tokio::time::sleep;
 use url::Url;
 use uuid::Uuid;
 
@@ -383,26 +385,90 @@ async fn acs_send_email(
     )
     .await?;
     debug!("{:#?}", response);
-    handle_response(response).await
+    // handle response and retry if needed
+    handle_response(response,
+        reqwest::Method::POST,
+        &url,
+        request_id,
+        Some(email),
+        acs_auth_method,
+        3,
+    ).await
 }
-
-/// Handle the response from the email send operation.
+/// Handle the response from the email send operation and retry if needed.
 ///
 /// # Arguments
 ///
 /// * `response` - The `reqwest::Response` object.
+/// * `method` - The HTTP method used for the request.
+/// * `url` - The URL to send the request to.
+/// * `request_id` - The request ID string.
+/// * `body` - An optional reference to the request body.
+/// * `acs_auth_method` - A reference to the `ACSAuthMethod` enum specifying the authentication method.
+/// * `max_retries` - The maximum number of retries.
 ///
 /// # Returns
 ///
 /// * `EmailResult<String>` - The result of the response handling, containing the message ID if successful.
-async fn handle_response(response: reqwest::Response) -> EmailResult<String> {
-    if response.status() == StatusCode::ACCEPTED {
-        parse_response::<SentEmailResponse>(response)
-            .await?
-            .id
-            .ok_or_else(create_missing_id_error)
-    } else {
-        parse_error_response(response).await
+async fn handle_response<T>(
+    mut response: reqwest::Response,
+    method: reqwest::Method,
+    url: &str,
+    request_id: &str,
+    body: Option<&T>,
+    acs_auth_method: &ACSAuthMethod,
+    max_retries: u32,
+) -> EmailResult<String>
+where
+    T: serde::Serialize,
+{
+    let mut retries = 0;
+
+    loop {
+        match response.status() {
+            StatusCode::ACCEPTED => {
+                return parse_response::<SentEmailResponse>(response)
+                    .await?
+                    .id
+                    .ok_or_else(create_missing_id_error);
+            }
+            StatusCode::TOO_MANY_REQUESTS | StatusCode::SERVICE_UNAVAILABLE => {
+                if retries >= max_retries {
+                    error!("Max retries exceeded");
+                    return parse_error_response(response).await;
+                }
+
+                if let Some(retry_after) = response.headers().get(RETRY_AFTER) {
+                    if let Ok(retry_after_value) = retry_after.to_str() {
+                        if let Ok(retry_after_secs) = retry_after_value.parse::<u64>() {
+                            debug!("Retrying after {} seconds", retry_after_secs);
+                            sleep(Duration::from_secs(retry_after_secs)).await;
+                        } else {
+                            error!("Failed to parse Retry-After header value");
+                            return parse_error_response(response).await;
+                        }
+                    } else {
+                        error!("Failed to parse Retry-After header value");
+                        return parse_error_response(response).await;
+                    }
+                } else {
+                    // Implement exponential backoff
+                    let backoff_secs = 2u64.pow(retries);
+                    debug!("Retry-After header not found. Retrying after {} seconds", backoff_secs);
+                    sleep(Duration::from_secs(backoff_secs)).await;
+                }
+
+                retries += 1;
+
+                // Retry the request
+                let new_response = send_request(method.clone(), url, request_id, body, acs_auth_method).await?;
+                response = new_response;
+            }
+            _ => {
+                error!("Failed to send email: {:#?}", response);
+                return parse_error_response(response).await;
+            }
+        }
     }
 }
 
