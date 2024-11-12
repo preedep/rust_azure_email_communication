@@ -7,7 +7,8 @@ use azure_core::HttpClient;
 use azure_identity::{create_credential, ClientSecretCredential};
 use std::sync::Arc;
 
-use log::debug;
+use log::{debug, error};
+use reqwest::header::RETRY_AFTER;
 use reqwest::{Client, StatusCode};
 use url::Url;
 use uuid::Uuid;
@@ -396,14 +397,33 @@ async fn acs_send_email(
 ///
 /// * `EmailResult<String>` - The result of the response handling, containing the message ID if successful.
 async fn handle_response(response: reqwest::Response) -> EmailResult<String> {
-    if response.status() == StatusCode::ACCEPTED {
-        parse_response::<SentEmailResponse>(response)
-            .await?
-            .id
-            .ok_or_else(create_missing_id_error)
-    } else {
-        parse_error_response(response).await
+    match response.status() {
+        StatusCode::ACCEPTED => {
+            return parse_response::<SentEmailResponse>(response)
+                .await?
+                .id
+                .ok_or_else(create_missing_id_error)
+        }
+        StatusCode::TOO_MANY_REQUESTS | StatusCode::SERVICE_UNAVAILABLE => {
+            if let Some(retry_after) = response.headers().get(RETRY_AFTER) {
+                if let Ok(retry_after_value) = retry_after.to_str() {
+                    if let Ok(retry_after_secs) = retry_after_value.parse::<u64>() {
+                        debug!("Retrying after {} seconds", retry_after_secs);
+                    } else {
+                        error!("Failed to parse Retry-After header value");
+                    }
+                } else {
+                    error!("Failed to parse Retry-After header value");
+                }
+            } else {
+                error!("Retry-After header not found , Implementing exponential backoff");
+            }
+        }
+        _ => {
+            error!("Failed to send email: {:#?}", response);
+        }
     }
+    parse_error_response(response).await
 }
 
 /// Parse the response from the email send operation.
