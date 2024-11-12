@@ -12,16 +12,30 @@ How to create Azure Communication Service?
 
 [Create Email Service](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/email/create-email-communication-resource)
 
+For my example support Shared Key , Service Principal and Managed Identity.
 
 How to run my example code , please setup environment variables follow this example below.
 ````
-export CONNECTION_STR="xxxxx-get-from-Azure-Portal" 
-export RUST_LOG=info 
-export SENDER="xxxx-get-from-Azure-Portal" 
-export REPLY_EMAIL="xxx@abc.com" 
-export REPLY_EMAIL_DISPLAY="xxxx@digital" 
 
-cargo run
+# For Shared Key
+CONNECTION_STR="xxxxx"
+
+# For SMTP
+SMTP_USER="xxxx"
+SMTP_PASSWORD="xxxx"
+SMTP_SERVER="smtp.azurecomm.net"
+
+# For Service Principle
+CLIENT_ID="xx"
+CLIENT_SECRET="xxx"
+TENANT_ID="xxx"
+
+ASC_URL="https://xxxxx.asiapacific.communication.azure.com"
+
+# For Common
+SENDER="xxx
+REPLY_EMAIL="xxxx"
+REPLY_EMAIL_DISPLAY="xxxx"
 
 ````
 

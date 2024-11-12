@@ -386,7 +386,7 @@ async fn acs_send_email(
     .await?;
     debug!("{:#?}", response);
     // handle response and retry if needed
-    handle_response(response,
+    handle_response_and_retry_if_needed(response,
         reqwest::Method::POST,
         &url,
         request_id,
@@ -410,7 +410,7 @@ async fn acs_send_email(
 /// # Returns
 ///
 /// * `EmailResult<String>` - The result of the response handling, containing the message ID if successful.
-async fn handle_response<T>(
+async fn handle_response_and_retry_if_needed<T>(
     mut response: reqwest::Response,
     method: reqwest::Method,
     url: &str,
