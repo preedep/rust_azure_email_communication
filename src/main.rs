@@ -1,16 +1,17 @@
 mod adapters;
 mod domain;
 
-
 use log::{debug, error, info};
 use std::{env, time};
 
+use crate::adapters::gateways::acs_email::ACSClientBuilder;
+use crate::domain::entities::models::{
+    EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmailBuilder,
+};
 use clap::{Parser, ValueEnum};
 use lettre::message::header::ContentType;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
-use crate::adapters::gateways::acs_email::ACSClientBuilder;
-use crate::domain::entities::models::{EmailAddress, EmailContent, EmailSendStatusType, Recipients, SentEmailBuilder};
 
 /// Enum representing the authentication methods for the CLI.
 #[derive(Debug, Clone, ValueEnum)]
