@@ -2,7 +2,10 @@
 // This file is part of the Azure Communication Services Email Client Library, an open-source project.
 // This source code is licensed under the MIT license found in the LICENSE file in the root directory of this source tree.
 
-
+use crate::adapters::gateways::acs_shared_key::{get_request_header, parse_endpoint};
+use crate::domain::entities::models::{
+    EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
+};
 use azure_core::auth::TokenCredential;
 use azure_core::HttpClient;
 use azure_identity::{create_credential, ClientSecretCredential};
@@ -15,8 +18,6 @@ use tokio::sync::oneshot;
 use tokio::time::sleep;
 use url::Url;
 use uuid::Uuid;
-use crate::adapters::gateways::acs_shared_key::{get_request_header, parse_endpoint};
-use crate::domain::entities::models::{EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse};
 
 type EmailResult<T> = Result<T, ErrorResponse>;
 const API_VERSION: &str = "2023-01-15-preview";
@@ -152,12 +153,12 @@ impl ACSClient {
                 if let Ok(status) = resp_status {
                     call_back(message_id.clone(), &status, None);
                     if matches!(
-                    status,
-                    EmailSendStatusType::Unknown
-                        | EmailSendStatusType::Canceled
-                        | EmailSendStatusType::Failed
-                        | EmailSendStatusType::Succeeded
-                ) {
+                        status,
+                        EmailSendStatusType::Unknown
+                            | EmailSendStatusType::Canceled
+                            | EmailSendStatusType::Failed
+                            | EmailSendStatusType::Succeeded
+                    ) {
                         let _ = tx.send(());
                         break;
                     }
@@ -176,7 +177,7 @@ impl ACSClient {
             }
         });
 
-        Ok((result,rx))
+        Ok((result, rx))
     }
 
     /// Get the status of a sent email using the ACS client.
