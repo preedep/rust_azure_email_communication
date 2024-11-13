@@ -46,4 +46,16 @@ Get from Azure Portal
 - SENDER
 ![Alt text](https://github.com/preedep/rust_azure_email_communication/blob/develop/images/image1.png "Sender")
 
+How to run my example code?
+```
+RUST_LOG=debug cargo run -- --help
+```
+```aiignore
+Usage: azure_email_service [OPTIONS]
 
+Options:
+  -p, --protocol <PROTOCOL>        [default: rest] [possible values: rest, smtp]
+  -a, --auth-method <AUTH_METHOD>  [default: shared-key] [possible values: managed-identity, service-principal, shared-key]
+  -h, --help                       Print help
+  -V, --version                    Print version
+```
