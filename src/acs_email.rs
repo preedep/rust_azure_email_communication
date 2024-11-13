@@ -13,6 +13,7 @@ use reqwest::header::RETRY_AFTER;
 use reqwest::{Client, StatusCode};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::oneshot;
 use tokio::time::sleep;
 use url::Url;
 use uuid::Uuid;
@@ -119,12 +120,22 @@ impl ACSClient {
         let request_id = format!("{}", Uuid::new_v4());
         acs_send_email(&self.host, &self.auth_method, request_id.as_str(), email).await
     }
+    /// Sends an email using the ACS client and periodically checks the status, invoking a callback function with the status.
+    ///
+    /// # Arguments
+    ///
+    /// * `email` - A reference to the `SentEmail` struct containing the email details.
+    /// * `call_back` - A callback function that takes the message ID, email send status, and optional error details.
+    ///
+    /// # Returns
+    ///
+    /// * `EmailResult<String>` - The result of the email send operation, containing the message ID if successful.
     #[allow(dead_code)]
     pub async fn send_email_with_callback<F>(
         self,
         email: &SentEmail,
         call_back: F,
-    ) -> EmailResult<String>
+    ) -> EmailResult<(String, oneshot::Receiver<()>)>
     where
         F: Fn(String, &EmailSendStatusType, Option<ErrorDetail>) + Send + Sync + 'static,
     {
@@ -133,6 +144,7 @@ impl ACSClient {
             acs_send_email(&self.host, &self.auth_method, request_id.as_str(), email).await?;
 
         let message_id = result.clone();
+        let (tx, rx) = oneshot::channel();
         tokio::spawn(async move {
             loop {
                 sleep(Duration::from_secs(5)).await;
@@ -140,12 +152,13 @@ impl ACSClient {
                 if let Ok(status) = resp_status {
                     call_back(message_id.clone(), &status, None);
                     if matches!(
-                        status,
-                        EmailSendStatusType::Unknown
-                            | EmailSendStatusType::Canceled
-                            | EmailSendStatusType::Failed
-                            | EmailSendStatusType::Succeeded
-                    ) {
+                    status,
+                    EmailSendStatusType::Unknown
+                        | EmailSendStatusType::Canceled
+                        | EmailSendStatusType::Failed
+                        | EmailSendStatusType::Succeeded
+                ) {
+                        let _ = tx.send(());
                         break;
                     }
                 } else {
@@ -157,13 +170,15 @@ impl ACSClient {
                             ..Default::default()
                         }),
                     );
+                    let _ = tx.send(());
                     break;
                 }
             }
         });
 
-        Ok(result)
+        Ok((result,rx))
     }
+
     /// Get the status of a sent email using the ACS client.
     ///
     /// # Arguments
