@@ -13,6 +13,7 @@ use lettre::message::header::ContentType;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 
+/// Enum representing the authentication methods for the CLI.
 #[derive(Debug, Clone, ValueEnum)]
 pub enum CLIAuthenticationMethod {
     ManagedIdentity,
@@ -20,22 +21,35 @@ pub enum CLIAuthenticationMethod {
     SharedKey,
 }
 
+/// Enum representing the protocols for the CLI.
 #[derive(Debug, Clone, ValueEnum)]
 pub enum CLIACSProtocol {
     REST,
     SMTP,
 }
 
+/// Struct representing the command line interface (CLI) arguments.
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
+    /// The protocol to use (REST or SMTP).
     #[arg(value_enum, short, long, default_value = "rest")]
     protocol: CLIACSProtocol,
 
+    /// The authentication method to use.
     #[arg(value_enum, short, long, default_value = "shared-key")]
     auth_method: CLIAuthenticationMethod,
 }
 
+/// Sends an email using SMTP.
+///
+/// # Arguments
+///
+/// * `sender` - The sender's email address.
+/// * `recipient` - The recipient's email address.
+/// * `smtp_server` - The SMTP server address.
+/// * `smtp_user` - The SMTP server username.
+/// * `smtp_password` - The SMTP server password.
 async fn send_email_with_smtp(
     sender: &str,
     recipient: &str,
@@ -72,6 +86,14 @@ async fn send_email_with_smtp(
     }
 }
 
+/// Sends an email using the ACS client.
+///
+/// # Arguments
+///
+/// * `auth_method` - The authentication method to use.
+/// * `sender` - The sender's email address.
+/// * `recipient` - The recipient's email address.
+/// * `display_name` - The display name for the recipient.
 async fn send_email_with_api(
     auth_method: &CLIAuthenticationMethod,
     sender: &str,
@@ -137,7 +159,6 @@ async fn send_email_with_api(
         .build()
         .expect("Failed to build ACSClient");
 
-
     let resp_send_email = acs_client.send_email(&email_request).await;
     match resp_send_email {
         Ok(message_resp_id) => {
@@ -166,6 +187,15 @@ async fn send_email_with_api(
     }
 }
 
+/// Retrieves the value of an environment variable.
+///
+/// # Arguments
+///
+/// * `var_name` - The name of the environment variable.
+///
+/// # Returns
+///
+/// * `String` - The value of the environment variable.
 fn get_env_var(var_name: &str) -> String {
     env::var(var_name).unwrap_or_else(|_| panic!("Environment variable {} is not set", var_name))
 }
@@ -190,7 +220,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 recipient.as_str(),
                 display_name.as_str(),
             )
-            .await;
+                .await;
         }
         CLIACSProtocol::SMTP => {
             info!("Sending email using SMTP");
@@ -207,7 +237,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 smtp_user.as_str(),
                 smtp_password.as_str(),
             )
-            .await;
+                .await;
         }
     }
 
