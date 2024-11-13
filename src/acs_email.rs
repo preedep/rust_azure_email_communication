@@ -8,11 +8,11 @@ use crate::utils::{get_request_header, parse_endpoint};
 use azure_core::auth::TokenCredential;
 use azure_core::HttpClient;
 use azure_identity::{create_credential, ClientSecretCredential};
-use std::sync::Arc;
-use std::time::Duration;
 use log::{debug, error};
 use reqwest::header::RETRY_AFTER;
 use reqwest::{Client, StatusCode};
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::time::sleep;
 use url::Url;
 use uuid::Uuid;
@@ -21,6 +21,7 @@ type EmailResult<T> = Result<T, ErrorResponse>;
 const API_VERSION: &str = "2023-01-15-preview";
 
 // Azure Communication Services (ACS) authentication method
+#[derive(Clone)]
 enum ACSAuthMethod {
     SharedKey(String),
     ServicePrincipal {
@@ -31,6 +32,7 @@ enum ACSAuthMethod {
     ManagedIdentity,
 }
 
+#[derive(Clone)]
 pub struct ACSClient {
     host: String,
     auth_method: ACSAuthMethod,
@@ -117,7 +119,51 @@ impl ACSClient {
         let request_id = format!("{}", Uuid::new_v4());
         acs_send_email(&self.host, &self.auth_method, request_id.as_str(), email).await
     }
+    #[allow(dead_code)]
+    pub async fn send_email_with_callback<F>(
+        self,
+        email: &SentEmail,
+        call_back: F,
+    ) -> EmailResult<String>
+    where
+        F: Fn(String, &EmailSendStatusType, Option<ErrorDetail>) + Send + Sync + 'static,
+    {
+        let request_id = format!("{}", Uuid::new_v4());
+        let result =
+            acs_send_email(&self.host, &self.auth_method, request_id.as_str(), email).await?;
 
+        let message_id = result.clone();
+        tokio::spawn(async move {
+            loop {
+                sleep(Duration::from_secs(5)).await;
+                let resp_status = self.get_email_status(&message_id).await;
+                if let Ok(status) = resp_status {
+                    call_back(message_id.clone(), &status, None);
+                    if matches!(
+                        status,
+                        EmailSendStatusType::Unknown
+                            | EmailSendStatusType::Canceled
+                            | EmailSendStatusType::Failed
+                            | EmailSendStatusType::Succeeded
+                    ) {
+                        break;
+                    }
+                } else {
+                    call_back(
+                        message_id.clone(),
+                        &EmailSendStatusType::Failed,
+                        Some(ErrorDetail {
+                            message: Some(format!("Error getting email status: {:?}", resp_status)),
+                            ..Default::default()
+                        }),
+                    );
+                    break;
+                }
+            }
+        });
+
+        Ok(result)
+    }
     /// Get the status of a sent email using the ACS client.
     ///
     /// # Arguments
@@ -389,14 +435,16 @@ async fn acs_send_email(
     .await?;
     debug!("{:#?}", response);
     // handle response and retry if needed
-    handle_response_and_retry_if_needed(response,
+    handle_response_and_retry_if_needed(
+        response,
         reqwest::Method::POST,
         &url,
         request_id,
         Some(email),
         acs_auth_method,
         3,
-    ).await
+    )
+    .await
 }
 /// Handle the response from the email send operation and retry if needed.
 ///
@@ -457,14 +505,18 @@ where
                 } else {
                     // Implement exponential backoff
                     let backoff_secs = 2u64.pow(retries);
-                    debug!("Retry-After header not found. Retrying after {} seconds", backoff_secs);
+                    debug!(
+                        "Retry-After header not found. Retrying after {} seconds",
+                        backoff_secs
+                    );
                     sleep(Duration::from_secs(backoff_secs)).await;
                 }
 
                 retries += 1;
 
                 // Retry the request
-                let new_response = send_request(method.clone(), url, request_id, body, acs_auth_method).await?;
+                let new_response =
+                    send_request(method.clone(), url, request_id, body, acs_auth_method).await?;
                 response = new_response;
             }
             _ => {

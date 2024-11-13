@@ -60,7 +60,14 @@ async fn send_email_with_smtp(
         .build();
 
     match mailer.send(&email) {
-        Ok(_) => info!("Email sent successfully!"),
+        Ok(r) => {
+            debug!("Email sent: {:#?}", r);
+            let messages = r.message();
+            for message in messages {
+                debug!("Message: {:#?}", message);
+            }
+            info!("Email sent successfully!")
+        }
         Err(e) => error!("Could not send email: {e:?}"),
     }
 }
@@ -129,8 +136,9 @@ async fn send_email_with_api(
     let acs_client = acs_client_builder
         .build()
         .expect("Failed to build ACSClient");
-    let resp_send_email = acs_client.send_email(&email_request).await;
 
+
+    let resp_send_email = acs_client.send_email(&email_request).await;
     match resp_send_email {
         Ok(message_resp_id) => {
             info!("Email was sent with message id: {}", message_resp_id);

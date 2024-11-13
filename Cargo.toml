@@ -32,6 +32,7 @@ azure_identity = {version = "0.21",default-features = false, features = ["develo
 
 openssl = {version = "0.10", features = ["vendored"]}
 
+
 [profile.release]
 lto = true
 opt-level = "z"
