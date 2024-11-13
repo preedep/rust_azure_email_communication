@@ -2,7 +2,7 @@
 // This file is part of the Azure Communication Services Email Client Library, an open-source project.
 // This source code is licensed under the MIT license found in the LICENSE file in the root directory of this source tree.
 use crate::models::{
-    EmailSendStatus, EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
+    EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
 };
 use crate::utils::{get_request_header, parse_endpoint};
 use azure_core::auth::TokenCredential;
@@ -11,7 +11,6 @@ use azure_identity::{create_credential, ClientSecretCredential};
 use log::{debug, error};
 use reqwest::header::RETRY_AFTER;
 use reqwest::{Client, StatusCode};
-use std::cmp::PartialEq;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -22,6 +21,7 @@ type EmailResult<T> = Result<T, ErrorResponse>;
 const API_VERSION: &str = "2023-01-15-preview";
 
 // Azure Communication Services (ACS) authentication method
+#[derive(Clone)]
 enum ACSAuthMethod {
     SharedKey(String),
     ServicePrincipal {
@@ -32,6 +32,7 @@ enum ACSAuthMethod {
     ManagedIdentity,
 }
 
+#[derive(Clone)]
 pub struct ACSClient {
     host: String,
     auth_method: ACSAuthMethod,
@@ -118,20 +119,50 @@ impl ACSClient {
         let request_id = format!("{}", Uuid::new_v4());
         acs_send_email(&self.host, &self.auth_method, request_id.as_str(), email).await
     }
-
+    #[allow(dead_code)]
     pub async fn send_email_with_callback<F>(
-        &self,
+        self,
         email: &SentEmail,
         call_back: F,
     ) -> EmailResult<String>
     where
-        F: Fn(String, EmailSendStatusType, Option<ErrorDetail>) + Send + Sync + 'static,
+        F: Fn(String, &EmailSendStatusType, Option<ErrorDetail>) + Send + Sync + 'static,
     {
         let request_id = format!("{}", Uuid::new_v4());
         let result =
-            acs_send_email(&self.host, &self.auth_method, request_id.as_str(), email).await;
+            acs_send_email(&self.host, &self.auth_method, request_id.as_str(), email).await?;
 
-        result
+        let message_id = result.clone();
+        tokio::spawn(async move {
+            loop {
+                sleep(Duration::from_secs(5)).await;
+                let resp_status = self.get_email_status(&message_id).await;
+                if let Ok(status) = resp_status {
+                    call_back(message_id.clone(), &status, None);
+                    if matches!(
+                        status,
+                        EmailSendStatusType::Unknown
+                            | EmailSendStatusType::Canceled
+                            | EmailSendStatusType::Failed
+                            | EmailSendStatusType::Succeeded
+                    ) {
+                        break;
+                    }
+                } else {
+                    call_back(
+                        message_id.clone(),
+                        &EmailSendStatusType::Failed,
+                        Some(ErrorDetail {
+                            message: Some(format!("Error getting email status: {:?}", resp_status)),
+                            ..Default::default()
+                        }),
+                    );
+                    break;
+                }
+            }
+        });
+
+        Ok(result)
     }
     /// Get the status of a sent email using the ACS client.
     ///
