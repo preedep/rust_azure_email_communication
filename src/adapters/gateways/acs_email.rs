@@ -1,10 +1,8 @@
 // License: MIT
 // This file is part of the Azure Communication Services Email Client Library, an open-source project.
 // This source code is licensed under the MIT license found in the LICENSE file in the root directory of this source tree.
-use crate::models::{
-    EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
-};
-use crate::utils::{get_request_header, parse_endpoint};
+
+
 use azure_core::auth::TokenCredential;
 use azure_core::HttpClient;
 use azure_identity::{create_credential, ClientSecretCredential};
@@ -17,6 +15,8 @@ use tokio::sync::oneshot;
 use tokio::time::sleep;
 use url::Url;
 use uuid::Uuid;
+use crate::adapters::gateways::acs_shared_key::{get_request_header, parse_endpoint};
+use crate::domain::entities::models::{EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse};
 
 type EmailResult<T> = Result<T, ErrorResponse>;
 const API_VERSION: &str = "2023-01-15-preview";
