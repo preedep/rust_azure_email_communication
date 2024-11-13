@@ -34,15 +34,15 @@ pub enum EmailSendStatusType {
 pub struct SentEmailResponse {
     /// The ID of the sent email.
     #[serde(rename = "id")]
-    pub(crate) id: Option<String>,
+    pub id: Option<String>,
 
     /// The status of the sent email.
     #[serde(rename = "status")]
-    pub(crate) status: Option<EmailSendStatus>,
+    pub status: Option<EmailSendStatus>,
 
     /// The error details if the email send operation failed.
     #[serde(rename = "error")]
-    pub(crate) error: Option<ErrorDetail>,
+    pub error: Option<ErrorDetail>,
 }
 
 /// Represents the details of an error.
@@ -50,21 +50,21 @@ pub struct SentEmailResponse {
 pub struct ErrorDetail {
     /// Additional information about the error.
     #[serde(rename = "additionalInfo")]
-    pub(crate) additional_info: Option<Vec<ErrorAdditionalInfo>>,
+    pub additional_info: Option<Vec<ErrorAdditionalInfo>>,
 
     /// The error code.
     #[serde(rename = "code")]
-    pub(crate) code: Option<String>,
+    pub code: Option<String>,
 
     // #[serde(rename = "details")]
     // pub(crate) details: Option<ErrorDetail>,
     /// The error message.
     #[serde(rename = "message")]
-    pub(crate) message: Option<String>,
+    pub message: Option<String>,
 
     /// The target of the error.
     #[serde(rename = "target")]
-    pub(crate) target: Option<String>,
+    pub target: Option<String>,
 }
 
 /// Represents additional information about an error.
@@ -72,11 +72,11 @@ pub struct ErrorDetail {
 pub struct ErrorAdditionalInfo {
     /// The additional information.
     #[serde(rename = "info")]
-    pub(crate) info: Option<String>,
+    pub info: Option<String>,
 
     /// The type of the additional information.
     #[serde(rename = "type")]
-    pub(crate) info_type: Option<String>,
+    pub info_type: Option<String>,
 }
 
 /// Represents an email to be sent.
@@ -84,34 +84,34 @@ pub struct ErrorAdditionalInfo {
 pub struct SentEmail {
     /// The headers of the email.
     #[serde(rename = "headers", skip_serializing_if = "Option::is_none")]
-    pub(crate) headers: Option<Vec<Header>>,
+    pub headers: Option<Vec<Header>>,
 
     /// The sender address of the email.
     #[serde(rename = "senderAddress")]
-    pub(crate) sender: String,
+    pub sender: String,
 
     /// The content of the email.
     #[serde(rename = "content")]
-    pub(crate) content: EmailContent,
+    pub content: EmailContent,
 
     /// The recipients of the email.
     #[serde(rename = "recipients")]
-    pub(crate) recipients: Recipients,
+    pub recipients: Recipients,
 
     /// The attachments of the email.
     #[serde(rename = "attachments", skip_serializing_if = "Option::is_none")]
-    pub(crate) attachments: Option<Vec<EmailAttachment>>,
+    pub attachments: Option<Vec<EmailAttachment>>,
 
     /// The reply-to addresses of the email.
     #[serde(rename = "replyTo", skip_serializing_if = "Option::is_none")]
-    pub(crate) reply_to: Option<Vec<EmailAddress>>,
+    pub reply_to: Option<Vec<EmailAddress>>,
 
     /// Indicates whether user engagement tracking is disabled.
     #[serde(
         rename = "userEngagementTrackingDisabled",
         skip_serializing_if = "Option::is_none"
     )]
-    pub(crate) user_engagement_tracking_disabled: Option<bool>,
+    pub user_engagement_tracking_disabled: Option<bool>,
 }
 
 /// Builder for creating a `SentEmail` instance.
@@ -286,15 +286,15 @@ pub struct EmailAttachment {
 pub struct EmailContent {
     /// The subject of the email.
     #[serde(rename = "subject")]
-    pub(crate) subject: Option<String>,
+    pub subject: Option<String>,
 
     /// The plain text content of the email.
     #[serde(rename = "plainText")]
-    pub(crate) plain_text: Option<String>,
+    pub plain_text: Option<String>,
 
     /// The HTML content of the email.
     #[serde(rename = "html")]
-    pub(crate) html: Option<String>,
+    pub html: Option<String>,
 }
 
 /// Represents a header in an email.
@@ -314,15 +314,15 @@ pub struct Header {
 pub struct Recipients {
     /// The primary recipients of the email.
     #[serde(rename = "to")]
-    pub(crate) to: Option<Vec<EmailAddress>>,
+    pub to: Option<Vec<EmailAddress>>,
 
     /// The CC recipients of the email.
     #[serde(rename = "cc")]
-    pub(crate) cc: Option<Vec<EmailAddress>>,
+    pub cc: Option<Vec<EmailAddress>>,
 
     /// The BCC recipients of the email.
     #[serde(rename = "bcc")]
-    pub(crate) b_cc: Option<Vec<EmailAddress>>,
+    pub b_cc: Option<Vec<EmailAddress>>,
 }
 
 /// Represents an email address.
@@ -330,11 +330,11 @@ pub struct Recipients {
 pub struct EmailAddress {
     /// The email address.
     #[serde(rename = "address")]
-    pub(crate) email: Option<String>,
+    pub email: Option<String>,
 
     /// The display name associated with the email address.
     #[serde(rename = "displayName")]
-    pub(crate) display_name: Option<String>,
+    pub display_name: Option<String>,
 }
 
 /// Represents an error response.
@@ -342,17 +342,17 @@ pub struct EmailAddress {
 pub struct ErrorResponse {
     /// The error details.
     #[serde(rename = "error")]
-    pub(crate) error: Option<ErrorDetail>,
+    pub error: Option<ErrorDetail>,
 }
 
 /// Represents the parameters of an endpoint.
 #[derive(Debug)]
 pub struct EndPointParams {
     /// The host name of the endpoint.
-    pub(crate) host_name: String,
+    pub host_name: String,
 
     /// The access key for the endpoint.
-    pub(crate) access_key: String,
+    pub access_key: String,
 }
 
 impl fmt::Display for EmailSendStatusType {

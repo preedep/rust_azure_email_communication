@@ -1,4 +1,4 @@
-use crate::models::EndPointParams;
+
 use base64::{engine::general_purpose, Engine as _};
 use hmac::{Hmac, Mac};
 use httpdate::fmt_http_date;
@@ -7,6 +7,7 @@ use reqwest::header::HeaderMap;
 use sha2::{Digest, Sha256};
 use std::time::SystemTime;
 use url::Url;
+use crate::domain::entities::models::EndPointParams;
 
 type HmacSha256 = Hmac<Sha256>;
 
