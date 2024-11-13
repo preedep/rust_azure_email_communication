@@ -2,17 +2,18 @@
 // This file is part of the Azure Communication Services Email Client Library, an open-source project.
 // This source code is licensed under the MIT license found in the LICENSE file in the root directory of this source tree.
 use crate::models::{
-    EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
+    EmailSendStatus, EmailSendStatusType, ErrorDetail, ErrorResponse, SentEmail, SentEmailResponse,
 };
 use crate::utils::{get_request_header, parse_endpoint};
 use azure_core::auth::TokenCredential;
 use azure_core::HttpClient;
 use azure_identity::{create_credential, ClientSecretCredential};
-use std::sync::Arc;
-use std::time::Duration;
 use log::{debug, error};
 use reqwest::header::RETRY_AFTER;
 use reqwest::{Client, StatusCode};
+use std::cmp::PartialEq;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::time::sleep;
 use url::Url;
 use uuid::Uuid;
@@ -118,6 +119,20 @@ impl ACSClient {
         acs_send_email(&self.host, &self.auth_method, request_id.as_str(), email).await
     }
 
+    pub async fn send_email_with_callback<F>(
+        &self,
+        email: &SentEmail,
+        call_back: F,
+    ) -> EmailResult<String>
+    where
+        F: Fn(String, EmailSendStatusType, Option<ErrorDetail>) + Send + Sync + 'static,
+    {
+        let request_id = format!("{}", Uuid::new_v4());
+        let result =
+            acs_send_email(&self.host, &self.auth_method, request_id.as_str(), email).await;
+
+        result
+    }
     /// Get the status of a sent email using the ACS client.
     ///
     /// # Arguments
@@ -389,14 +404,16 @@ async fn acs_send_email(
     .await?;
     debug!("{:#?}", response);
     // handle response and retry if needed
-    handle_response_and_retry_if_needed(response,
+    handle_response_and_retry_if_needed(
+        response,
         reqwest::Method::POST,
         &url,
         request_id,
         Some(email),
         acs_auth_method,
         3,
-    ).await
+    )
+    .await
 }
 /// Handle the response from the email send operation and retry if needed.
 ///
@@ -457,14 +474,18 @@ where
                 } else {
                     // Implement exponential backoff
                     let backoff_secs = 2u64.pow(retries);
-                    debug!("Retry-After header not found. Retrying after {} seconds", backoff_secs);
+                    debug!(
+                        "Retry-After header not found. Retrying after {} seconds",
+                        backoff_secs
+                    );
                     sleep(Duration::from_secs(backoff_secs)).await;
                 }
 
                 retries += 1;
 
                 // Retry the request
-                let new_response = send_request(method.clone(), url, request_id, body, acs_auth_method).await?;
+                let new_response =
+                    send_request(method.clone(), url, request_id, body, acs_auth_method).await?;
                 response = new_response;
             }
             _ => {

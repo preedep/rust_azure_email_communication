@@ -19,7 +19,7 @@ impl EmailSendStatus {
 }
 
 /// Enum representing the possible statuses of an email send operation.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum EmailSendStatusType {
     Unknown,
     Canceled,

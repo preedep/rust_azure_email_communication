@@ -60,7 +60,14 @@ async fn send_email_with_smtp(
         .build();
 
     match mailer.send(&email) {
-        Ok(_) => info!("Email sent successfully!"),
+        Ok(r) => {
+            debug!("Email sent: {:#?}", r);
+            let messages = r.message();
+            for message in messages {
+                debug!("Message: {:#?}", message);
+            }
+            info!("Email sent successfully!")
+        }
         Err(e) => error!("Could not send email: {e:?}"),
     }
 }
