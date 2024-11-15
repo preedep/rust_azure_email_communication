@@ -1,5 +1,10 @@
 # Azure Email Communication Service - Rust
 
+
+## I've change repo to https://github.com/preedep/azure-ecs-rs and https://crates.io/crates/azure-ecs-rs instead of
+
+
+
 This is a simple example of how to send an email using Azure Communication Service with REST API and SMTP.
 
 It is developed according to this document.
